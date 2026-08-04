@@ -84,8 +84,10 @@ export const overview = query({
       .query("bookingActivities")
       .withIndex("by_date", (q) => q.eq("date", today))
       .collect();
-    const roster: Record<string, { name: string; color: string; total: number }> =
-      {};
+    const roster: Record<
+      string,
+      { name: string; color: string; startTime?: string; total: number }
+    > = {};
     for (const item of todayActivities) {
       const booking = await ctx.db.get(item.bookingId);
       if (!booking || booking.status === "cancelled") continue;
@@ -94,6 +96,7 @@ export const overview = query({
       roster[item.activityId] ??= {
         name: activity.name,
         color: activity.color,
+        startTime: activity.startTime,
         total: 0,
       };
       roster[item.activityId].total += item.participants;
@@ -110,7 +113,9 @@ export const overview = query({
       revenueMtd,
       pendingChannelRequests: pendingRequests.length,
       pendingGuestRequests: pendingGuestRequests.length,
-      activityRoster: Object.values(roster),
+      activityRoster: Object.values(roster).sort((a, b) =>
+        (a.startTime ?? "99").localeCompare(b.startTime ?? "99"),
+      ),
     };
   },
 });

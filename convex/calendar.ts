@@ -307,6 +307,7 @@ export const dayDetail = query({
       {
         name: string;
         color: string;
+        startTime?: string;
         total: number;
         byLevel: Record<string, number>;
         participants: { guestName: string; count: number; level?: string }[];
@@ -321,6 +322,7 @@ export const dayDetail = query({
       activityGroups[key] ??= {
         name: activity.name,
         color: activity.color,
+        startTime: activity.startTime,
         total: 0,
         byLevel: {},
         participants: [],
@@ -350,6 +352,7 @@ export const dayDetail = query({
         const guest = booking ? await ctx.db.get(booking.guestId) : null;
         return {
           name: service?.name ?? "Service",
+          startTime: service?.startTime,
           qty: s.qty,
           guestName: guest?.fullName ?? "Unknown",
         };
@@ -364,8 +367,12 @@ export const dayDetail = query({
       departures: departureList,
       inHouse: inHouseList,
       guestsSleeping: inHouse.reduce((n, b) => n + b.adults + b.children, 0),
-      activities: Object.values(activityGroups),
-      services: serviceList,
+      activities: Object.values(activityGroups).sort((a, b) =>
+        (a.startTime ?? "99").localeCompare(b.startTime ?? "99"),
+      ),
+      services: serviceList.sort((a, b) =>
+        (a.startTime ?? "99").localeCompare(b.startTime ?? "99"),
+      ),
       dietary,
     };
   },

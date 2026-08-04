@@ -239,6 +239,7 @@ export default function GuestPortalPage() {
                 <optgroup label="Activities">
                   {stay.catalog.activities.map((activity) => (
                     <option key={activity._id} value={`activity|${activity._id}`}>
+                      {activity.startTime ? `${activity.startTime} · ` : ""}
                       {activity.name} — {eur(activity.price)} · {activity.durationMin} min
                     </option>
                   ))}
@@ -246,6 +247,7 @@ export default function GuestPortalPage() {
                 <optgroup label="Services">
                   {stay.catalog.services.map((service) => (
                     <option key={service._id} value={`service|${service._id}`}>
+                      {service.startTime ? `${service.startTime} · ` : ""}
                       {service.name} — {eur(service.price)} {service.unit.replace("_", " ")}
                     </option>
                   ))}
@@ -358,7 +360,14 @@ export default function GuestPortalPage() {
               <ul className="divide-y divide-sand-100">
                 {stay.booked.map((item, i) => (
                   <li key={`b${i}`} className="flex items-center justify-between px-5 py-3 text-sm">
-                    <span className="font-medium">{item.name}</span>
+                    <span className="font-medium">
+                      {item.name}
+                      {item.startTime && (
+                        <span className="num ml-2 text-xs font-bold text-ocean-700">
+                          {item.startTime}
+                        </span>
+                      )}
+                    </span>
                     <span className="flex items-center gap-3">
                       <span className="num text-ink-faint">{prettyDate(item.date)}</span>
                       <Badge tone="green">Booked</Badge>

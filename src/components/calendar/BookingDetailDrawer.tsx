@@ -298,7 +298,14 @@ export default function BookingDetailDrawer({
                 <ul className="divide-y divide-sand-100">
                   {detail.activities.map((item) => (
                     <li key={item._id} className="flex items-center justify-between py-2 text-sm">
-                      <span className="font-medium">{item.name}</span>
+                      <span className="font-medium">
+                        {item.name}
+                        {item.startTime && (
+                          <span className="num ml-2 text-xs font-bold text-ocean-700">
+                            {item.startTime}
+                          </span>
+                        )}
+                      </span>
                       <span className="flex items-center gap-3">
                         <span className="num text-ink-faint">{item.date}</span>
                         <span className="num">×{item.participants}</span>

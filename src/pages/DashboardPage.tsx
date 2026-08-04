@@ -233,6 +233,11 @@ export default function DashboardPage() {
                         className="h-2.5 w-2.5 rounded-full"
                         style={{ background: activity.color }}
                       />
+                      {activity.startTime && (
+                        <span className="num text-xs font-bold text-ocean-700">
+                          {activity.startTime}
+                        </span>
+                      )}
                       <span className="text-sm font-semibold">{activity.name}</span>
                       <span className="num rounded-full bg-sand-100 px-2 py-0.5 text-xs font-bold">
                         {activity.total}

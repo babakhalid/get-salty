@@ -78,6 +78,11 @@ export default function DayPanel({
                           style={{ background: activity.color }}
                         />
                         {activity.name}
+                        {activity.startTime && (
+                          <span className="num rounded-md bg-ocean-50 px-1.5 py-0.5 text-[11px] font-bold text-ocean-800">
+                            {activity.startTime}
+                          </span>
+                        )}
                       </span>
                       <span className="num rounded-full bg-sand-100 px-2.5 py-0.5 text-xs font-bold">
                         {activity.total} pax
@@ -118,7 +123,14 @@ export default function DayPanel({
               <ul className="divide-y divide-sand-100 rounded-xl border border-sand-200 bg-white px-4">
                 {detail.services.map((service, i) => (
                   <li key={i} className="flex items-center justify-between py-2.5 text-sm">
-                    <span className="font-medium">{service.name}</span>
+                    <span className="font-medium">
+                      {service.name}
+                      {service.startTime && (
+                        <span className="num ml-2 text-xs font-bold text-ocean-700">
+                          {service.startTime}
+                        </span>
+                      )}
+                    </span>
                     <span className="text-xs text-ink-faint">
                       {service.guestName} · ×{service.qty}
                     </span>

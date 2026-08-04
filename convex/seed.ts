@@ -85,23 +85,31 @@ export const run = internalMutation({
     // ── Activities ──
     const beginnerSurf = await ctx.db.insert("activities", {
       name: "Beginner Surf Lesson", type: "surf_lesson", capacityPerSession: 8,
-      price: 30, durationMin: 120, color: "#2b8188", active: true,
+      price: 30, durationMin: 120, color: "#2b8188", active: true, startTime: "10:00",
     });
     const intermediateSurf = await ctx.db.insert("activities", {
       name: "Intermediate Coaching", type: "surf_lesson", capacityPerSession: 6,
-      price: 35, durationMin: 120, color: "#4a9fa4", active: true,
+      price: 35, durationMin: 120, color: "#4a9fa4", active: true, startTime: "10:00",
     });
     const surfGuiding = await ctx.db.insert("activities", {
       name: "Surf Guiding", type: "surf_guiding", capacityPerSession: 6,
-      price: 25, durationMin: 240, color: "#0f5c63", active: true,
+      price: 25, durationMin: 240, color: "#0f5c63", active: true, startTime: "10:00",
+    });
+    await ctx.db.insert("activities", {
+      name: "Free Surf Session", type: "surf_guiding", capacityPerSession: 20,
+      price: 0, durationMin: 120, color: "#7dc0c2", active: true, startTime: "14:30",
+    });
+    await ctx.db.insert("activities", {
+      name: "Souk Trip", type: "excursion", capacityPerSession: 12,
+      price: 0, durationMin: 120, color: "#a3906f", active: true, startTime: "16:00",
     });
     const yoga = await ctx.db.insert("activities", {
       name: "Sunset Yoga", type: "yoga", capacityPerSession: 12,
-      price: 12, durationMin: 75, color: "#e8b04b", active: true,
+      price: 12, durationMin: 75, color: "#e8b04b", active: true, startTime: "19:00",
     });
     const excursion = await ctx.db.insert("activities", {
       name: "Paradise Valley Trip", type: "excursion", capacityPerSession: 10,
-      price: 40, durationMin: 360, color: "#c05b4d", active: true,
+      price: 40, durationMin: 360, color: "#c05b4d", active: true, startTime: "09:30",
     });
 
     // ── Services ──
@@ -115,13 +123,13 @@ export const run = internalMutation({
       name: "Half-Board Meals", price: 14, unit: "per_day", active: true,
     });
     await ctx.db.insert("services", {
-      name: "Breakfast", price: 6, unit: "per_day", active: true,
+      name: "Breakfast", price: 6, unit: "per_day", active: true, startTime: "09:00",
     });
     await ctx.db.insert("services", {
-      name: "Lunch", price: 10, unit: "per_day", active: true,
+      name: "Lunch", price: 10, unit: "per_day", active: true, startTime: "13:00",
     });
     await ctx.db.insert("services", {
-      name: "Dinner", price: 12, unit: "per_day", active: true,
+      name: "Dinner", price: 12, unit: "per_day", active: true, startTime: "20:00",
     });
     await ctx.db.insert("services", {
       name: "Laundry Bag", price: 8, unit: "per_unit", active: true,
@@ -416,6 +424,75 @@ export const ensureMealServices = internalMutation({
     return created.length > 0
       ? `Added: ${created.join(", ")}`
       : "Meal services already present.";
+  },
+});
+
+/**
+ * Set the house daily program on existing catalogs (idempotent, by name):
+ * Breakfast 09:00 · Surf 10:00 · Lunch 13:00 · Free surf 14:30 · Souk 16:00 ·
+ * Yoga 19:00 · Dinner 20:00. Creates Free Surf Session / Souk Trip if missing.
+ * Run with: npx convex run seed:setDailyTimes  (add --prod for production)
+ */
+export const setDailyTimes = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const activityTimes: Record<string, string> = {
+      "Beginner Surf Lesson": "10:00",
+      "Intermediate Coaching": "10:00",
+      "Surf Guiding": "10:00",
+      "Free Surf Session": "14:30",
+      "Souk Trip": "16:00",
+      "Sunset Yoga": "19:00",
+      "Paradise Valley Trip": "09:30",
+    };
+    const serviceTimes: Record<string, string> = {
+      Breakfast: "09:00",
+      Lunch: "13:00",
+      Dinner: "20:00",
+    };
+
+    const activities = await ctx.db.query("activities").collect();
+    const services = await ctx.db.query("services").collect();
+    const changes: string[] = [];
+
+    for (const [name, startTime] of Object.entries(activityTimes)) {
+      const doc = activities.find((a) => a.name === name);
+      if (doc) {
+        if (doc.startTime !== startTime) {
+          await ctx.db.patch(doc._id, { startTime });
+          changes.push(`${name} → ${startTime}`);
+        }
+      } else if (name === "Free Surf Session") {
+        await ctx.db.insert("activities", {
+          name, type: "surf_guiding", capacityPerSession: 20,
+          price: 0, durationMin: 120, color: "#7dc0c2", active: true, startTime,
+        });
+        changes.push(`created ${name} at ${startTime}`);
+      } else if (name === "Souk Trip") {
+        await ctx.db.insert("activities", {
+          name, type: "excursion", capacityPerSession: 12,
+          price: 0, durationMin: 120, color: "#a3906f", active: true, startTime,
+        });
+        changes.push(`created ${name} at ${startTime}`);
+      }
+    }
+    for (const [name, startTime] of Object.entries(serviceTimes)) {
+      const doc = services.find((s) => s.name === name);
+      if (doc && doc.startTime !== startTime) {
+        await ctx.db.patch(doc._id, { startTime });
+        changes.push(`${name} → ${startTime}`);
+      }
+    }
+
+    if (changes.length > 0) {
+      await ctx.db.insert("auditLogs", {
+        actorName: "System",
+        action: "catalog.setDailyTimes",
+        entity: "activities",
+        summary: `Set daily program times: ${changes.join(", ")}`,
+      });
+    }
+    return changes.length > 0 ? changes.join("; ") : "Already up to date.";
   },
 });
 

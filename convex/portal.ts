@@ -58,19 +58,29 @@ export const stay = query({
       catalog: {
         activities: activities
           .filter((a) => a.active)
+          .sort((a, b) => (a.startTime ?? "99").localeCompare(b.startTime ?? "99"))
           .map((a) => ({
             _id: a._id,
             name: a.name,
             price: a.price,
             durationMin: a.durationMin,
             type: a.type,
+            startTime: a.startTime,
           })),
         services: services
           .filter((s) => s.active)
-          .map((s) => ({ _id: s._id, name: s.name, price: s.price, unit: s.unit })),
+          .sort((a, b) => (a.startTime ?? "99").localeCompare(b.startTime ?? "99"))
+          .map((s) => ({
+            _id: s._id,
+            name: s.name,
+            price: s.price,
+            unit: s.unit,
+            startTime: s.startTime,
+          })),
       },
       booked: myActivities.map((a) => ({
         name: activityById.get(a.activityId)?.name ?? "Activity",
+        startTime: activityById.get(a.activityId)?.startTime,
         date: a.date,
         participants: a.participants,
       })),

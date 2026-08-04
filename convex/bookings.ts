@@ -112,7 +112,11 @@ export const detail = query({
       room,
       bed,
       pkg,
-      activities: acts.map((a, i) => ({ ...a, name: activityDocs[i]?.name })),
+      activities: acts.map((a, i) => ({
+        ...a,
+        name: activityDocs[i]?.name,
+        startTime: activityDocs[i]?.startTime,
+      })),
       services: servs.map((s, i) => ({ ...s, name: serviceDocs[i]?.name })),
       payments: pays,
       requests,

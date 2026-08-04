@@ -285,7 +285,14 @@ function ActivitiesTab() {
               <li key={activity._id} className="flex items-center gap-4 px-5 py-3.5">
                 <span className="h-3 w-3 rounded-full" style={{ background: activity.color }} />
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold">{activity.name}</p>
+                  <p className="text-sm font-semibold">
+                    {activity.name}
+                    {activity.startTime && (
+                      <span className="num ml-2 rounded-md bg-ocean-50 px-1.5 py-0.5 text-[11px] font-bold text-ocean-800">
+                        {activity.startTime}
+                      </span>
+                    )}
+                  </p>
                   <p className="text-xs text-ink-faint">
                     {eur(activity.price)} · {activity.durationMin} min · max {activity.capacityPerSession}/session
                   </p>
@@ -317,12 +324,13 @@ function ActivitiesTab() {
               durationMin: Number(form.get("durationMin")),
               color: String(form.get("color")),
               active: form.get("active") === "on",
+              startTime: String(form.get("startTime")) || undefined,
             });
             setEditing(null);
           }}
         >
           <Field label="Name"><Input name="name" defaultValue={editingItem?.name} required /></Field>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <Field label="Type">
               <Select name="type" defaultValue={editingItem?.type ?? "surf_lesson"}>
                 <option value="surf_lesson">Surf lesson</option>
@@ -331,6 +339,9 @@ function ActivitiesTab() {
                 <option value="excursion">Excursion</option>
                 <option value="other">Other</option>
               </Select>
+            </Field>
+            <Field label="Daily time">
+              <Input name="startTime" type="time" defaultValue={editingItem?.startTime ?? ""} />
             </Field>
             <Field label="Color"><Input name="color" type="color" defaultValue={editingItem?.color ?? "#2b8188"} className="h-10 p-1" /></Field>
           </div>
@@ -373,7 +384,14 @@ function ServicesTab() {
             {services.map((service) => (
               <li key={service._id} className="flex items-center gap-4 px-5 py-3.5">
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold">{service.name}</p>
+                  <p className="text-sm font-semibold">
+                    {service.name}
+                    {service.startTime && (
+                      <span className="num ml-2 rounded-md bg-ocean-50 px-1.5 py-0.5 text-[11px] font-bold text-ocean-800">
+                        {service.startTime}
+                      </span>
+                    )}
+                  </p>
                   <p className="text-xs text-ink-faint">
                     {eur(service.price)} {service.unit.replace("_", " ")}
                   </p>
@@ -402,12 +420,13 @@ function ServicesTab() {
               price: Number(form.get("price")),
               unit: form.get("unit") as "per_stay" | "per_day" | "per_unit",
               active: form.get("active") === "on",
+              startTime: String(form.get("startTime")) || undefined,
             });
             setEditing(null);
           }}
         >
           <Field label="Name"><Input name="name" defaultValue={editingItem?.name} required /></Field>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <Field label="Price"><Input name="price" type="number" min={0} step="0.01" defaultValue={editingItem?.price} required /></Field>
             <Field label="Unit">
               <Select name="unit" defaultValue={editingItem?.unit ?? "per_unit"}>
@@ -415,6 +434,9 @@ function ServicesTab() {
                 <option value="per_day">Per day</option>
                 <option value="per_stay">Per stay</option>
               </Select>
+            </Field>
+            <Field label="Daily time">
+              <Input name="startTime" type="time" defaultValue={editingItem?.startTime ?? ""} />
             </Field>
           </div>
           <label className="flex items-center gap-2 text-sm">

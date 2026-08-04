@@ -29,6 +29,7 @@ export const upsertActivity = mutation({
     durationMin: v.number(),
     color: v.string(),
     active: v.boolean(),
+    startTime: v.optional(v.string()),
   },
   handler: async (ctx, { id, ...fields }) => {
     const actor = await requireRole(ctx, "manager");
@@ -78,6 +79,7 @@ export const upsertService = mutation({
       v.literal("per_unit"),
     ),
     active: v.boolean(),
+    startTime: v.optional(v.string()),
   },
   handler: async (ctx, { id, ...fields }) => {
     const actor = await requireRole(ctx, "manager");

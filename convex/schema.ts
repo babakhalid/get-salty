@@ -106,6 +106,7 @@ export default defineSchema({
     durationMin: v.number(),
     color: v.string(),
     active: v.boolean(),
+    startTime: v.optional(v.string()), // daily fixed time, "HH:MM" 24h
   }),
 
   services: defineTable({
@@ -117,6 +118,7 @@ export default defineSchema({
       v.literal("per_unit"),
     ),
     active: v.boolean(),
+    startTime: v.optional(v.string()), // e.g. breakfast at 09:00
   }),
 
   packages: defineTable({

@@ -1,0 +1,110 @@
+@import "tailwindcss";
+
+@theme {
+  /* Type — Satoshi for UI, JetBrains Mono for numbers/data */
+  --font-sans: "Satoshi", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  /* Warm sand neutrals (base) */
+  --color-sand-50: #faf8f4;
+  --color-sand-100: #f5f0e8;
+  --color-sand-200: #eae2d4;
+  --color-sand-300: #d9ccb6;
+  --color-sand-400: #bfae92;
+  --color-sand-500: #a3906f;
+  --color-sand-600: #87755a;
+  --color-sand-700: #6b5c48;
+  --color-sand-800: #4a4033;
+  --color-sand-900: #2e2820;
+
+  /* Ocean teal (single accent, desaturated) */
+  --color-ocean-50: #eef7f7;
+  --color-ocean-100: #d5ecec;
+  --color-ocean-200: #aedada;
+  --color-ocean-300: #7dc0c2;
+  --color-ocean-400: #4a9fa4;
+  --color-ocean-500: #2b8188;
+  --color-ocean-600: #1c6a72;
+  --color-ocean-700: #0f5c63;
+  --color-ocean-800: #114a50;
+  --color-ocean-900: #113b40;
+
+  /* Warm off-black ink */
+  --color-ink: #201c17;
+  --color-ink-soft: #57503f;
+  --color-ink-faint: #8b8270;
+
+  /* Functional (desaturated, warm-tinted) */
+  --color-dune: #e8b04b; /* sun amber — pending / warning */
+  --color-kelp: #4e7d43; /* confirmed / success */
+  --color-coral: #c05b4d; /* cancelled / danger */
+
+  --radius-xl2: 1.25rem;
+
+  --shadow-diffuse: 0 20px 40px -15px rgba(46, 40, 32, 0.08);
+  --shadow-lift: 0 8px 24px -8px rgba(46, 40, 32, 0.14);
+
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  @apply bg-sand-50 text-ink font-sans antialiased;
+}
+
+/* Numbers always mono */
+.num {
+  @apply font-mono tabular-nums;
+}
+
+/* Thin warm scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-sand-300) transparent;
+}
+*::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--color-sand-300);
+  border-radius: 8px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Focus rings — ocean, subtle */
+:focus-visible {
+  outline: 2px solid var(--color-ocean-400);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: var(--color-ocean-200);
+}
+
+@keyframes shimmer {
+  from {
+    background-position: -200% 0;
+  }
+  to {
+    background-position: 200% 0;
+  }
+}
+.skeleton {
+  @apply rounded-lg bg-sand-200/70;
+  background-image: linear-gradient(
+    100deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.65) 50%,
+    transparent 70%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s linear infinite;
+}

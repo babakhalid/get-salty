@@ -1,0 +1,467 @@
+import { v } from "convex/values";
+import { internalMutation } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
+import { generatePortalToken, generateReservationCode } from "./lib/access";
+
+/**
+ * Demo data seeder. Run with: npx convex run seed:run
+ * Idempotent — refuses to run if rooms already exist.
+ */
+
+function isoAddDays(base: Date, days: number): string {
+  const d = new Date(base);
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+export const run = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const existing = await ctx.db.query("rooms").first();
+    if (existing) return "Already seeded — skipping.";
+
+    const today = new Date();
+    const day = (offset: number) => isoAddDays(today, offset);
+
+    // ── Room types ──
+    const doubleType = await ctx.db.insert("roomTypes", {
+      name: "Ocean Double",
+      description: "Private double with ocean view and terrace",
+      mode: "private",
+      capacity: 2,
+      basePrice: 55,
+      amenities: ["Private bathroom", "Terrace", "Ocean view"],
+    });
+    const familyType = await ctx.db.insert("roomTypes", {
+      name: "Family Suite",
+      description: "Two connected rooms, sleeps four",
+      mode: "private",
+      capacity: 4,
+      basePrice: 85,
+      amenities: ["Private bathroom", "Kitchenette"],
+    });
+    const dormType = await ctx.db.insert("roomTypes", {
+      name: "Surf Dorm",
+      description: "Shared dorm, per-bed booking",
+      mode: "dorm",
+      capacity: 6,
+      basePrice: 18,
+      amenities: ["Lockers", "Shared bathroom"],
+    });
+
+    // ── Rooms + beds ──
+    const roomAtlas = await ctx.db.insert("rooms", {
+      roomTypeId: doubleType, name: "Atlas", floor: "1", status: "available", sortOrder: 0,
+    });
+    await ctx.db.insert("rooms", {
+      roomTypeId: doubleType, name: "Anza", floor: "1", status: "available", sortOrder: 1,
+    });
+    const roomTaghazout = await ctx.db.insert("rooms", {
+      roomTypeId: doubleType, name: "Taghazout", floor: "2", status: "available", sortOrder: 2,
+    });
+    const roomAmouddou = await ctx.db.insert("rooms", {
+      roomTypeId: familyType, name: "Amouddou", floor: "2", status: "available", sortOrder: 3,
+    });
+    const dormBanana = await ctx.db.insert("rooms", {
+      roomTypeId: dormType, name: "Banana Dorm", floor: "G", status: "available", sortOrder: 4,
+    });
+    const dormDevils = await ctx.db.insert("rooms", {
+      roomTypeId: dormType, name: "Devil's Rock Dorm", floor: "G", status: "available", sortOrder: 5,
+    });
+
+    const bananaBeds: Id<"beds">[] = [];
+    for (let i = 0; i < 6; i++) {
+      bananaBeds.push(
+        await ctx.db.insert("beds", { roomId: dormBanana, label: `Bed ${i + 1}`, sortOrder: i }),
+      );
+    }
+    const devilsBeds: Id<"beds">[] = [];
+    for (let i = 0; i < 4; i++) {
+      devilsBeds.push(
+        await ctx.db.insert("beds", { roomId: dormDevils, label: `Bed ${i + 1}`, sortOrder: i }),
+      );
+    }
+
+    // ── Activities ──
+    const beginnerSurf = await ctx.db.insert("activities", {
+      name: "Beginner Surf Lesson", type: "surf_lesson", capacityPerSession: 8,
+      price: 30, durationMin: 120, color: "#2b8188", active: true,
+    });
+    const intermediateSurf = await ctx.db.insert("activities", {
+      name: "Intermediate Coaching", type: "surf_lesson", capacityPerSession: 6,
+      price: 35, durationMin: 120, color: "#4a9fa4", active: true,
+    });
+    const surfGuiding = await ctx.db.insert("activities", {
+      name: "Surf Guiding", type: "surf_guiding", capacityPerSession: 6,
+      price: 25, durationMin: 240, color: "#0f5c63", active: true,
+    });
+    const yoga = await ctx.db.insert("activities", {
+      name: "Sunset Yoga", type: "yoga", capacityPerSession: 12,
+      price: 12, durationMin: 75, color: "#e8b04b", active: true,
+    });
+    const excursion = await ctx.db.insert("activities", {
+      name: "Paradise Valley Trip", type: "excursion", capacityPerSession: 10,
+      price: 40, durationMin: 360, color: "#c05b4d", active: true,
+    });
+
+    // ── Services ──
+    const transfer = await ctx.db.insert("services", {
+      name: "Airport Transfer (AGA)", price: 35, unit: "per_unit", active: true,
+    });
+    const rental = await ctx.db.insert("services", {
+      name: "Board + Wetsuit Rental", price: 15, unit: "per_day", active: true,
+    });
+    const halfBoard = await ctx.db.insert("services", {
+      name: "Half-Board Meals", price: 14, unit: "per_day", active: true,
+    });
+    await ctx.db.insert("services", {
+      name: "Breakfast", price: 6, unit: "per_day", active: true,
+    });
+    await ctx.db.insert("services", {
+      name: "Lunch", price: 10, unit: "per_day", active: true,
+    });
+    await ctx.db.insert("services", {
+      name: "Dinner", price: 12, unit: "per_day", active: true,
+    });
+    await ctx.db.insert("services", {
+      name: "Laundry Bag", price: 8, unit: "per_unit", active: true,
+    });
+
+    // ── Packages ──
+    await ctx.db.insert("packages", {
+      name: "7-Night Surf & Stay",
+      description: "Week in a dorm bed, 5 surf lessons, daily half-board, airport pickup",
+      price: 385,
+      nights: 7,
+      includedItems: [
+        { kind: "activity", refId: beginnerSurf, qty: 5 },
+        { kind: "service", refId: halfBoard, qty: 7 },
+        { kind: "service", refId: transfer, qty: 1 },
+      ],
+      active: true,
+    });
+    await ctx.db.insert("packages", {
+      name: "Weekend Swell Escape",
+      description: "3 nights private double, 2 guided sessions, sunset yoga",
+      price: 290,
+      nights: 3,
+      includedItems: [
+        { kind: "activity", refId: surfGuiding, qty: 2 },
+        { kind: "activity", refId: yoga, qty: 1 },
+      ],
+      active: true,
+    });
+
+    // ── Guests ──
+    const mkGuest = (g: {
+      fullName: string; email?: string; phone?: string; country?: string;
+      surfLevel?: "beginner" | "intermediate" | "advanced"; allergies?: string;
+    }) => ctx.db.insert("guests", g);
+
+    const lena = await mkGuest({
+      fullName: "Lena Bergström", email: "lena.bergstrom@gmail.com",
+      phone: "+46 70 314 8829", country: "Sweden", surfLevel: "beginner",
+      allergies: "Lactose intolerant",
+    });
+    const theo = await mkGuest({
+      fullName: "Théo Marchetti", email: "theo.marchetti@proton.me",
+      phone: "+33 6 52 19 44 07", country: "France", surfLevel: "intermediate",
+    });
+    const priya = await mkGuest({
+      fullName: "Priya Raghunathan", email: "priya.r@outlook.com",
+      phone: "+44 7911 284 663", country: "United Kingdom", surfLevel: "beginner",
+      allergies: "Peanuts (severe)",
+    });
+    const jonas = await mkGuest({
+      fullName: "Jonas Wetzel", email: "jwetzel@gmx.de",
+      phone: "+49 151 2387 1142", country: "Germany", surfLevel: "advanced",
+    });
+    const aline = await mkGuest({
+      fullName: "Aline Duarte", email: "aline.duarte@icloud.com",
+      phone: "+351 91 442 7730", country: "Portugal", surfLevel: "intermediate",
+    });
+    const noor = await mkGuest({
+      fullName: "Noor El Fassi", email: "noor.elfassi@gmail.com",
+      phone: "+212 661 48 22 93", country: "Morocco", surfLevel: "beginner",
+      allergies: "Vegetarian",
+    });
+    const casper = await mkGuest({
+      fullName: "Casper Vandenberg", email: "caspervdb@hotmail.com",
+      phone: "+31 6 2841 9034", country: "Netherlands", surfLevel: "beginner",
+    });
+
+    // ── Bookings ──
+    const mkBooking = async (b: {
+      guestId: typeof lena; roomId: typeof roomAtlas; bedId?: (typeof bananaBeds)[number];
+      checkIn: string; checkOut: string;
+      status: "inquiry" | "confirmed" | "checked_in" | "checked_out";
+      source: "direct" | "booking_com" | "airbnb" | "walk_in" | "hostelworld";
+      adults: number; children?: number; totalAmount: number;
+      channelBookingId?: string; notes?: string;
+    }) =>
+      ctx.db.insert("bookings", {
+        guestId: b.guestId, roomId: b.roomId, bedId: b.bedId,
+        checkIn: b.checkIn, checkOut: b.checkOut, status: b.status,
+        source: b.source, channelBookingId: b.channelBookingId,
+        adults: b.adults, children: b.children ?? 0,
+        totalAmount: b.totalAmount, currency: "EUR", notes: b.notes,
+        portalToken: generatePortalToken(),
+        reservationCode: generateReservationCode(),
+      });
+
+    const bLena = await mkBooking({
+      guestId: lena, roomId: dormBanana, bedId: bananaBeds[0],
+      checkIn: day(-2), checkOut: day(5), status: "checked_in",
+      source: "hostelworld", channelBookingId: "HW-88213947",
+      adults: 1, totalAmount: 385,
+      notes: "7-Night Surf & Stay package",
+    });
+    const bTheo = await mkBooking({
+      guestId: theo, roomId: roomAtlas,
+      checkIn: day(-1), checkOut: day(4), status: "checked_in",
+      source: "booking_com", channelBookingId: "BDC-4471820365",
+      adults: 2, totalAmount: 275,
+    });
+    const bPriya = await mkBooking({
+      guestId: priya, roomId: dormBanana, bedId: bananaBeds[1],
+      checkIn: day(0), checkOut: day(7), status: "confirmed",
+      source: "direct", adults: 1, totalAmount: 126,
+    });
+    const bJonas = await mkBooking({
+      guestId: jonas, roomId: roomTaghazout,
+      checkIn: day(1), checkOut: day(8), status: "confirmed",
+      source: "airbnb", channelBookingId: "ABB-HMKQ5T8ZRW",
+      adults: 1, totalAmount: 385,
+    });
+    const bAline = await mkBooking({
+      guestId: aline, roomId: roomAmouddou,
+      checkIn: day(3), checkOut: day(10), status: "confirmed",
+      source: "direct", adults: 2, children: 2, totalAmount: 595,
+    });
+    const bNoor = await mkBooking({
+      guestId: noor, roomId: dormDevils, bedId: devilsBeds[0],
+      checkIn: day(-5), checkOut: day(-1), status: "checked_out",
+      source: "walk_in", adults: 1, totalAmount: 72,
+    });
+    await mkBooking({
+      guestId: casper, roomId: dormBanana, bedId: bananaBeds[2],
+      checkIn: day(4), checkOut: day(11), status: "inquiry",
+      source: "direct", adults: 1, totalAmount: 126,
+    });
+
+    // ── Booking activities (surf roster across the week) ──
+    const addAct = (bookingId: typeof bLena, activityId: typeof beginnerSurf, date: string, participants = 1) =>
+      ctx.db.insert("bookingActivities", { bookingId, activityId, date, participants });
+
+    for (let i = 0; i < 5; i++) await addAct(bLena, beginnerSurf, day(i));
+    await addAct(bTheo, intermediateSurf, day(0), 2);
+    await addAct(bTheo, intermediateSurf, day(1), 2);
+    await addAct(bTheo, yoga, day(0), 2);
+    await addAct(bPriya, beginnerSurf, day(1));
+    await addAct(bPriya, beginnerSurf, day(2));
+    await addAct(bPriya, yoga, day(1));
+    await addAct(bJonas, surfGuiding, day(2));
+    await addAct(bJonas, surfGuiding, day(3));
+    await addAct(bAline, beginnerSurf, day(4), 2);
+    await addAct(bAline, excursion, day(5), 4);
+
+    // ── Booking services ──
+    await ctx.db.insert("bookingServices", {
+      bookingId: bLena, serviceId: halfBoard, qty: 7, amount: 0,
+    });
+    await ctx.db.insert("bookingServices", {
+      bookingId: bLena, serviceId: transfer, qty: 1, date: day(-2), amount: 0,
+    });
+    await ctx.db.insert("bookingServices", {
+      bookingId: bTheo, serviceId: rental, qty: 5, amount: 75,
+    });
+    await ctx.db.insert("bookingServices", {
+      bookingId: bJonas, serviceId: transfer, qty: 1, date: day(1), amount: 35,
+    });
+    await ctx.db.insert("bookingServices", {
+      bookingId: bAline, serviceId: transfer, qty: 1, date: day(3), amount: 35,
+    });
+
+    // ── Payments ──
+    const pay = (bookingId: typeof bLena, amount: number, method: "cash" | "bank_transfer" | "card" | "ota_payout", date: string, note?: string) =>
+      ctx.db.insert("payments", {
+        bookingId, amount, currency: "EUR", method, direction: "in", date, note,
+      });
+
+    await pay(bLena, 100, "bank_transfer", day(-14), "Deposit");
+    await pay(bLena, 285, "cash", day(-2), "Balance at check-in");
+    await pay(bTheo, 275, "ota_payout", day(-1), "Booking.com payout");
+    await pay(bPriya, 50, "bank_transfer", day(-7), "Deposit");
+    await pay(bNoor, 72, "cash", day(-5));
+    await pay(bAline, 200, "bank_transfer", day(-4), "Deposit");
+
+    // ── Expenses ──
+    await ctx.db.insert("expenses", {
+      category: "food", amount: 240.5, currency: "EUR", date: day(-3),
+      description: "Weekly souk run — produce and fish",
+    });
+    await ctx.db.insert("expenses", {
+      category: "equipment", amount: 180, currency: "EUR", date: day(-6),
+      description: "Two new 8ft foamies",
+    });
+    await ctx.db.insert("expenses", {
+      category: "transport", amount: 62.4, currency: "EUR", date: day(-2),
+      description: "Van fuel + parking Taghazout",
+    });
+    await ctx.db.insert("expenses", {
+      category: "utilities", amount: 118.7, currency: "EUR", date: day(-10),
+      description: "Electricity + water June",
+    });
+
+    // ── Channels + pending requests ──
+    const bookingCom = await ctx.db.insert("channels", {
+      name: "Booking.com", type: "booking_com", status: "mock", lastSyncAt: Date.now(),
+    });
+    const airbnb = await ctx.db.insert("channels", {
+      name: "Airbnb", type: "airbnb", status: "mock", lastSyncAt: Date.now(),
+    });
+    await ctx.db.insert("channels", {
+      name: "Hostelworld", type: "hostelworld", status: "mock", lastSyncAt: Date.now(),
+    });
+
+    await ctx.db.insert("channelRequests", {
+      channelId: bookingCom,
+      type: "new_booking",
+      status: "pending",
+      payload: {
+        ota_reservation_code: "BDC-5529183074",
+        guest_name: "Maëlle Roussel",
+        guest_email: "maelle.roussel@orange.fr",
+        guest_country: "France",
+        arrival_date: day(6),
+        departure_date: day(11),
+        room_type: "Ocean Double",
+        occupancy: 2,
+        total_price: 275,
+        currency: "EUR",
+        notes: "Arriving late, around 22:30",
+      },
+    });
+    await ctx.db.insert("channelRequests", {
+      channelId: airbnb,
+      type: "new_booking",
+      status: "pending",
+      payload: {
+        ota_reservation_code: "ABB-PN3XK7WQJD",
+        guest_name: "Rok Zupančič",
+        guest_email: "rok.zupancic@siol.net",
+        guest_country: "Slovenia",
+        arrival_date: day(9),
+        departure_date: day(16),
+        room_type: "Surf Dorm",
+        occupancy: 1,
+        total_price: 126,
+        currency: "EUR",
+      },
+    });
+
+    // ── A pending guest request (portal demo) ──
+    await ctx.db.insert("guestRequests", {
+      bookingId: bPriya,
+      type: "order",
+      payload: { activityId: yoga, qty: 1, date: day(2), note: "Evening session if possible" },
+      status: "pending",
+    });
+
+    await ctx.db.insert("auditLogs", {
+      actorName: "System",
+      action: "seed.run",
+      entity: "system",
+      summary: "Seeded demo data (rooms, guests, bookings, channels)",
+    });
+
+    return "Seeded demo data.";
+  },
+});
+
+/**
+ * One-off top-up for already-seeded databases: adds the restauration
+ * services (Breakfast / Lunch / Dinner) if they don't exist yet, and gives
+ * one in-house booking a breakfast line so the calendar row has data.
+ * Run with: npx convex run seed:ensureMealServices
+ */
+export const ensureMealServices = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const services = await ctx.db.query("services").collect();
+    const wanted: { name: string; price: number }[] = [
+      { name: "Breakfast", price: 6 },
+      { name: "Lunch", price: 10 },
+      { name: "Dinner", price: 12 },
+    ];
+    const created: string[] = [];
+    for (const meal of wanted) {
+      if (services.some((s) => s.name === meal.name)) continue;
+      await ctx.db.insert("services", {
+        name: meal.name,
+        price: meal.price,
+        unit: "per_day",
+        active: true,
+      });
+      created.push(meal.name);
+    }
+    if (created.length > 0) {
+      await ctx.db.insert("auditLogs", {
+        actorName: "System",
+        action: "service.create",
+        entity: "services",
+        summary: `Added restauration services: ${created.join(", ")}`,
+      });
+    }
+    return created.length > 0
+      ? `Added: ${created.join(", ")}`
+      : "Meal services already present.";
+  },
+});
+
+/** Give every existing booking a reservation code (idempotent). */
+export const backfillReservationCodes = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const bookings = await ctx.db.query("bookings").collect();
+    let patched = 0;
+    for (const b of bookings) {
+      if (!b.reservationCode) {
+        await ctx.db.patch(b._id, { reservationCode: generateReservationCode() });
+        patched++;
+      }
+    }
+    return `Assigned codes to ${patched} bookings.`;
+  },
+});
+
+/** Add a guest directly (idempotent by phone). Run via CLI. */
+export const addGuest = internalMutation({
+  args: {
+    fullName: v.string(),
+    phone: v.string(),
+    email: v.optional(v.string()),
+    country: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const guests = await ctx.db.query("guests").collect();
+    const digits = (s: string) => s.replace(/\D/g, "");
+    const existing = guests.find(
+      (g) => g.phone && digits(g.phone).slice(-9) === digits(args.phone).slice(-9),
+    );
+    if (existing) {
+      await ctx.db.patch(existing._id, { fullName: args.fullName, phone: args.phone });
+      return `Updated existing guest ${args.fullName} (${existing._id})`;
+    }
+    const id = await ctx.db.insert("guests", args);
+    await ctx.db.insert("auditLogs", {
+      actorName: "System",
+      action: "guest.create",
+      entity: "guests",
+      entityId: id,
+      summary: `Added guest ${args.fullName} via CLI`,
+      after: args,
+    });
+    return `Added guest ${args.fullName} (${id})`;
+  },
+});

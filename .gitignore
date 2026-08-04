@@ -30,3 +30,4 @@ dev-snapshot.zip
 
 # Vercel
 .vercel
+.env*

@@ -25,8 +25,14 @@ npm run dev
 ```
 
 Data lives in **Convex cloud** — team `baba-khalid`, project `nomaya-data`
-(dev deployment `tremendous-bison-197`, eu-west-1). Dashboard:
-https://dashboard.convex.dev
+(eu-west-1). Dashboard: https://dashboard.convex.dev
+
+| Environment | Convex deployment | Frontend |
+| --- | --- | --- |
+| dev | `tremendous-bison-197` | http://localhost:5175 |
+| production | `tremendous-dog-462` | **https://nomaya-pi.vercel.app** |
+
+GitHub: https://github.com/babakhalid/nomaya · Vercel project: `nomaya`
 
 The **first account created on the sign-in page becomes admin**; everyone after
 starts as `crew` (promote them in Settings → Team).
@@ -39,12 +45,17 @@ For a fresh database, seed demo data with `npx convex run seed:run`.
 A snapshot of the original local data is kept in `local-backup.zip`
 (restore with `npx convex import local-backup.zip`).
 
-### Deploying to Vercel
+### Releasing changes
 
-1. `npx convex deploy` creates the **production** Convex deployment; set its
-   `JWT_PRIVATE_KEY`/`JWKS`/`SITE_URL` env vars the same way.
-2. On Vercel, set `VITE_CONVEX_URL` to the production deployment URL and use
-   build command `npx convex deploy --cmd 'npm run build'`.
+```bash
+npx convex deploy -y        # push backend to the prod deployment
+npx vercel deploy --prod    # push frontend (or connect the GitHub repo in Vercel for auto-deploys)
+git push                    # keep the repo in sync
+```
+
+Vercel prod env: `VITE_CONVEX_URL=https://tremendous-dog-462.eu-west-1.convex.cloud`.
+Convex prod env: `JWT_PRIVATE_KEY`, `JWKS`, `HERMES_API_KEY`, `SITE_URL=https://nomaya-pi.vercel.app`.
+Hermes production endpoint: `https://tremendous-dog-462.eu-west-1.convex.site/hermes/verify`.
 
 ## Structure
 

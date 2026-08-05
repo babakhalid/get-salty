@@ -14,7 +14,6 @@ import {
   SignOut,
   SquaresFour,
   UsersThree,
-  Waves,
   X,
 } from "@phosphor-icons/react";
 import { api } from "../../convex/_generated/api";
@@ -35,8 +34,8 @@ const RANK = { crew: 0, manager: 1, admin: 2 } as const;
 function Brand() {
   return (
     <div className="flex items-center gap-2.5">
-      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-ocean-700 text-sand-50">
-        <Waves size={20} weight="bold" />
+      <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-ocean-100">
+        <img src="/mascot.png" alt="" className="h-8 w-8 object-contain" />
       </span>
       <div className="leading-tight">
         <p className="text-[15px] font-black tracking-tight">Get Salty</p>

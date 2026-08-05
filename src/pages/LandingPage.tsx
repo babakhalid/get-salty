@@ -12,11 +12,11 @@ const LOCALES: Locale[] = ["en", "fr", "de", "ru"];
 
 /* Placeholder gallery art — swap for real photos in public/gallery/ */
 const GALLERY_GRADIENTS = [
-  "linear-gradient(140deg, #7dc0c2 0%, #0f5c63 100%)",
-  "linear-gradient(140deg, #e8b04b 0%, #a3906f 100%)",
-  "linear-gradient(140deg, #4a9fa4 0%, #113b40 100%)",
+  "linear-gradient(140deg, #bda3e2 0%, #6a3fa6 100%)",
+  "linear-gradient(140deg, #f9c74f 0%, #c98f2a 100%)",
+  "linear-gradient(140deg, #a381d4 0%, #3d2465 100%)",
   "linear-gradient(140deg, #d9ccb6 0%, #87755a 100%)",
-  "linear-gradient(140deg, #2b8188 0%, #114a50 100%)",
+  "linear-gradient(140deg, #8b62c9 0%, #55328a 100%)",
 ];
 
 function Kicker({ children }: { children: string }) {
@@ -77,7 +77,8 @@ export default function LandingPage() {
       <header className="sticky top-0 z-40 border-b border-white/10 bg-ocean-900/90 backdrop-blur-sm">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-5 py-3">
           <div className="flex items-center gap-3">
-            <img src="/logo.png" alt="Get Salty Morocco" className="h-9 w-auto" />
+            <img src="/mascot.png" alt="" className="h-9 w-auto" />
+            <img src="/logo.png" alt="Get Salty Morocco" className="h-8 w-auto" />
             <span className="hidden text-xs font-medium text-ocean-200 sm:block">
               {t.topLocation}
             </span>
@@ -142,7 +143,7 @@ export default function LandingPage() {
             </div>
           </div>
           <div className="hero-in hidden items-center justify-center lg:flex">
-            <img src="/logo.png" alt="" className="w-64 opacity-90" />
+            <img src="/mascot.png" alt="" className="w-72 drop-shadow-xl" />
           </div>
         </div>
         <svg

@@ -2,7 +2,6 @@ import { useRef, useState, type FormEvent } from "react";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
-import { Waves } from "@phosphor-icons/react";
 import { Button, Field, Input } from "../components/ui";
 
 export default function SignInPage() {
@@ -69,8 +68,8 @@ export default function SignInPage() {
       {/* Left — brand panel */}
       <div className="relative hidden flex-col justify-between overflow-hidden bg-ocean-900 p-12 text-sand-50 lg:flex lg:w-[46%]">
         <div className="hero-line flex items-center gap-3">
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-sand-50/10 backdrop-blur border border-white/10">
-            <Waves size={22} weight="bold" />
+          <span className="flex h-12 w-12 items-center justify-center rounded-xl border border-white/10 bg-sand-50/90 backdrop-blur">
+            <img src="/mascot.png" alt="" className="h-9 w-9 object-contain" />
           </span>
           <span className="text-lg font-black tracking-tight">
             Get Salty Surf Camp
@@ -95,14 +94,14 @@ export default function SignInPage() {
           <path
             className="hero-wave"
             d="M0 60c60-40 120-40 180 0s120 40 180 0 120-40 180 0 120 40 180 0 120-40 180 0"
-            stroke="#7dc0c2"
+            stroke="#bda3e2"
             strokeWidth="3"
             strokeLinecap="round"
           />
           <path
             className="hero-wave"
             d="M0 110c60-40 120-40 180 0s120 40 180 0 120-40 180 0 120 40 180 0 120-40 180 0"
-            stroke="#4a9fa4"
+            stroke="#f9c74f"
             strokeWidth="3"
             strokeLinecap="round"
           />
@@ -117,8 +116,8 @@ export default function SignInPage() {
       <div className="flex flex-1 items-center justify-center px-6 py-12">
         <div className="w-full max-w-sm">
           <div className="form-item mb-8 flex items-center gap-2.5 lg:hidden">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-ocean-700 text-sand-50">
-              <Waves size={20} weight="bold" />
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-ocean-100">
+              <img src="/mascot.png" alt="" className="h-8 w-8 object-contain" />
             </span>
             <span className="font-black tracking-tight">Get Salty Surf Camp</span>
           </div>

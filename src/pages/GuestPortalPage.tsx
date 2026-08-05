@@ -3,7 +3,7 @@ import { useParams } from "react-router";
 import { useMutation, useQuery } from "convex/react";
 import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
-import { Check, ShoppingBagOpen, Waves } from "@phosphor-icons/react";
+import { Check, ShoppingBagOpen } from "@phosphor-icons/react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import {
@@ -62,7 +62,7 @@ export default function GuestPortalPage() {
     return (
       <div className="flex min-h-[100dvh] items-center justify-center px-6">
         <div className="text-center">
-          <Waves size={40} weight="duotone" className="mx-auto text-ocean-400" />
+          <img src="/mascot.png" alt="" className="mx-auto h-16 w-16 object-contain opacity-80" />
           <h1 className="mt-4 text-xl font-black tracking-tight">This link isn't active</h1>
           <p className="mt-2 text-sm text-ink-faint">
             Ask the surf house to send you a fresh portal link.
@@ -146,8 +146,8 @@ export default function GuestPortalPage() {
       <div className="bg-ocean-900 px-6 pb-16 pt-10 text-sand-50">
         <div className="mx-auto max-w-xl">
           <div className="portal-item flex items-center gap-2.5">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/10">
-              <Waves size={20} weight="bold" />
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-sand-50/90">
+              <img src="/mascot.png" alt="" className="h-8 w-8 object-contain" />
             </span>
             <span className="font-black tracking-tight">Get Salty Surf Camp</span>
           </div>

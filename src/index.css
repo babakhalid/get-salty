@@ -17,17 +17,17 @@
   --color-sand-800: #4a4033;
   --color-sand-900: #2e2820;
 
-  /* Ocean teal (single accent, desaturated) */
-  --color-ocean-50: #eef7f7;
-  --color-ocean-100: #d5ecec;
-  --color-ocean-200: #aedada;
-  --color-ocean-300: #7dc0c2;
-  --color-ocean-400: #4a9fa4;
-  --color-ocean-500: #2b8188;
-  --color-ocean-600: #1c6a72;
-  --color-ocean-700: #0f5c63;
-  --color-ocean-800: #114a50;
-  --color-ocean-900: #113b40;
+  /* Get Salty purple (brand accent) */
+  --color-ocean-50: #f5f1fb;
+  --color-ocean-100: #ece3f8;
+  --color-ocean-200: #d9c8f0;
+  --color-ocean-300: #bda3e2;
+  --color-ocean-400: #a381d4;
+  --color-ocean-500: #8b62c9;
+  --color-ocean-600: #7a4fb8;
+  --color-ocean-700: #6a3fa6;
+  --color-ocean-800: #55328a;
+  --color-ocean-900: #3d2465;
 
   /* Warm off-black ink */
   --color-ink: #201c17;
@@ -35,7 +35,7 @@
   --color-ink-faint: #8b8270;
 
   /* Functional (desaturated, warm-tinted) */
-  --color-dune: #e8b04b; /* sun amber — pending / warning */
+  --color-dune: #f9c74f; /* brand yellow — pending / warning */
   --color-kelp: #4e7d43; /* confirmed / success */
   --color-coral: #c05b4d; /* cancelled / danger */
 

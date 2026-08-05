@@ -4,12 +4,7 @@ import { useMutation, useQuery } from "convex/react";
 import { addDays, format } from "date-fns";
 import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
-import {
-  ArrowRight,
-  CheckCircle,
-  Users,
-  Waves,
-} from "@phosphor-icons/react";
+import { ArrowRight, CheckCircle, Users } from "@phosphor-icons/react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import {
@@ -177,8 +172,8 @@ export default function BookPage() {
       <div className="bg-ocean-900 px-6 pb-14 pt-10 text-sand-50">
         <div className="mx-auto max-w-2xl">
           <div className="book-item flex items-center gap-2.5">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/10">
-              <Waves size={20} weight="bold" />
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-sand-50/90">
+              <img src="/mascot.png" alt="" className="h-8 w-8 object-contain" />
             </span>
             <span className="font-black tracking-tight">Get Salty Surf Camp</span>
           </div>

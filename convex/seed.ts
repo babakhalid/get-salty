@@ -630,3 +630,216 @@ export const setupRealRooms = internalMutation({
     return "Created 9 real rooms across 5 room types.";
   },
 });
+
+/**
+ * Demo bookings + payments for the REAL Get Salty rooms, so the dashboard,
+ * calendar and analytics feel alive (same experience as the Nomaya demo).
+ * Idempotent — skips if any "[Demo]" booking exists.
+ * Run with: npx convex run seed:seedDemoBookings (add --prod for production)
+ */
+export const seedDemoBookings = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const bookings = await ctx.db.query("bookings").collect();
+    if (bookings.some((b) => b.notes?.includes("[Demo]"))) {
+      return "Demo bookings already present — skipping.";
+    }
+
+    const rooms = await ctx.db.query("rooms").collect();
+    const roomTypes = await ctx.db.query("roomTypes").collect();
+    const activities = await ctx.db.query("activities").collect();
+    const channels = await ctx.db.query("channels").collect();
+    const roomByName = (name: string) => rooms.find((r) => r.name === name);
+    const activityByName = (name: string) => activities.find((a) => a.name === name);
+    const priceOf = (roomName: string) => {
+      const room = roomByName(roomName);
+      const type = roomTypes.find((t) => t._id === room?.roomTypeId);
+      return type?.basePrice ?? 35;
+    };
+
+    const today = new Date();
+    const day = (offset: number) => isoAddDays(today, offset);
+    const nightsOf = (a: string, b: string) =>
+      Math.round((Date.parse(b) - Date.parse(a)) / 86400000);
+
+    const mkGuest = (g: {
+      fullName: string; email?: string; phone?: string; country?: string;
+      surfLevel?: "beginner" | "intermediate" | "advanced"; allergies?: string;
+    }) => ctx.db.insert("guests", g);
+
+    const mkBooking = async (b: {
+      guestId: Id<"guests">; roomName: string; checkIn: string; checkOut: string;
+      status: "inquiry" | "confirmed" | "checked_in" | "checked_out";
+      source: "direct" | "booking_com" | "airbnb" | "walk_in";
+      adults: number; children?: number;
+      channelBookingId?: string; extra?: number; note?: string;
+    }) => {
+      const room = roomByName(b.roomName);
+      if (!room) throw new Error(`Room not found: ${b.roomName}`);
+      return await ctx.db.insert("bookings", {
+        guestId: b.guestId,
+        roomId: room._id,
+        checkIn: b.checkIn,
+        checkOut: b.checkOut,
+        status: b.status,
+        source: b.source,
+        channelBookingId: b.channelBookingId,
+        adults: b.adults,
+        children: b.children ?? 0,
+        totalAmount: priceOf(b.roomName) * nightsOf(b.checkIn, b.checkOut) + (b.extra ?? 0),
+        currency: "EUR",
+        notes: `[Demo]${b.note ? ` ${b.note}` : ""}`,
+        portalToken: generatePortalToken(),
+        reservationCode: generateReservationCode(),
+      });
+    };
+    const pay = (bookingId: Id<"bookings">, amount: number, method: "cash" | "bank_transfer" | "card" | "ota_payout", date: string, note?: string) =>
+      ctx.db.insert("payments", {
+        bookingId, amount, currency: "EUR", method, direction: "in", date, note,
+      });
+
+    // ── Guests ──
+    const mara = await mkGuest({
+      fullName: "Mara Lindqvist", email: "mara.lindqvist@gmail.com",
+      phone: "+46 73 512 9084", country: "Sweden", surfLevel: "beginner",
+      allergies: "Gluten-free",
+    });
+    const hugo = await mkGuest({
+      fullName: "Hugo Delacroix", email: "hugo.delacroix@proton.me",
+      phone: "+33 6 71 40 22 85", country: "France", surfLevel: "intermediate",
+    });
+    const ciara = await mkGuest({
+      fullName: "Ciara O'Donnell", email: "ciara.odonnell@gmail.com",
+      phone: "+353 87 244 1963", country: "Ireland", surfLevel: "beginner",
+    });
+    const lennart = await mkGuest({
+      fullName: "Lennart Böhme", email: "l.boehme@gmx.de",
+      phone: "+49 160 4471 208", country: "Germany", surfLevel: "advanced",
+    });
+    const salma = await mkGuest({
+      fullName: "Salma Idrissi", email: "salma.idrissi@gmail.com",
+      phone: "+212 662 48 17 romeo".replace(" romeo", "93"), country: "Morocco",
+      surfLevel: "intermediate", allergies: "Vegetarian",
+    });
+    const tomas = await mkGuest({
+      fullName: "Tomás Herrera", email: "tomas.herrera@outlook.es",
+      phone: "+34 655 90 21 47", country: "Spain", surfLevel: "beginner",
+    });
+    const family = await mkGuest({
+      fullName: "Anneke van Dijk", email: "anneke.vandijk@kpnmail.nl",
+      phone: "+31 6 4032 7719", country: "Netherlands", surfLevel: "beginner",
+      allergies: "Kids: no nuts",
+    });
+
+    // ── Bookings ──
+    const bMara = await mkBooking({
+      guestId: mara, roomName: "Tide Room", checkIn: day(-2), checkOut: day(5),
+      status: "checked_in", source: "direct", adults: 1,
+      note: "Solo traveler, first surf trip",
+    });
+    const bHugo = await mkBooking({
+      guestId: hugo, roomName: "Ocean Suite", checkIn: day(1), checkOut: day(6),
+      status: "confirmed", source: "direct", adults: 2,
+    });
+    const bCiara = await mkBooking({
+      guestId: ciara, roomName: "Seaside Trio", checkIn: day(3), checkOut: day(8),
+      status: "confirmed", source: "airbnb", channelBookingId: "ABB-HM8T2WQK4N",
+      adults: 3, note: "Group of friends",
+    });
+    const bLennart = await mkBooking({
+      guestId: lennart, roomName: "Sunset Double", checkIn: day(-1), checkOut: day(4),
+      status: "checked_in", source: "booking_com", channelBookingId: "BDC-8837120465",
+      adults: 2,
+    });
+    const bSalma = await mkBooking({
+      guestId: salma, roomName: "Coastal Room", checkIn: day(-6), checkOut: day(-1),
+      status: "checked_out", source: "walk_in", adults: 1,
+    });
+    await mkBooking({
+      guestId: tomas, roomName: "Golden Room", checkIn: day(5), checkOut: day(9),
+      status: "inquiry", source: "direct", adults: 2,
+      note: "Self-service request",
+    });
+    const bFamily = await mkBooking({
+      guestId: family, roomName: "The Salty Flat", checkIn: day(7), checkOut: day(14),
+      status: "confirmed", source: "direct", adults: 2, children: 2,
+    });
+
+    // ── Payments (like the Nomaya experience: deposits, cash, OTA payouts) ──
+    await pay(bMara, 100, "bank_transfer", day(-12), "Deposit");
+    await pay(bMara, 145, "cash", day(-2), "Balance at check-in");
+    await pay(bHugo, 90, "bank_transfer", day(-8), "Deposit");
+    await pay(bLennart, 175, "ota_payout", day(-1), "Booking.com payout");
+    await pay(bSalma, 175, "cash", day(-6));
+    await pay(bFamily, 250, "bank_transfer", day(-3), "Deposit");
+
+    // ── Activities for the coming days ──
+    const beginner = activityByName("Beginner Surf Lesson");
+    const guiding = activityByName("Surf Guiding");
+    const yoga = activityByName("Sunset Yoga");
+    const addAct = (bookingId: Id<"bookings">, activityId: Id<"activities"> | undefined, date: string, participants = 1) =>
+      activityId
+        ? ctx.db.insert("bookingActivities", { bookingId, activityId, date, participants })
+        : Promise.resolve(null);
+
+    for (let i = 0; i < 4; i++) await addAct(bMara, beginner?._id, day(i));
+    await addAct(bMara, yoga?._id, day(1));
+    await addAct(bLennart, guiding?._id, day(0), 2);
+    await addAct(bLennart, guiding?._id, day(1), 2);
+    await addAct(bHugo, beginner?._id, day(2), 2);
+    await addAct(bCiara, beginner?._id, day(4), 3);
+    await addAct(bCiara, yoga?._id, day(4), 3);
+
+    // ── A pending guest request + channel request for the inbox ──
+    if (yoga) {
+      await ctx.db.insert("guestRequests", {
+        bookingId: bMara,
+        type: "order",
+        payload: { activityId: yoga._id, qty: 1, date: day(2), note: "Rooftop session if possible" },
+        status: "pending",
+      });
+    }
+    const bookingCom = channels.find((c) => c.type === "booking_com");
+    if (bookingCom) {
+      await ctx.db.insert("channelRequests", {
+        channelId: bookingCom._id,
+        type: "new_booking",
+        status: "pending",
+        payload: {
+          ota_reservation_code: "BDC-5561283970",
+          guest_name: "Elsa Nyberg",
+          guest_email: "elsa.nyberg@telia.se",
+          guest_country: "Sweden",
+          arrival_date: day(9),
+          departure_date: day(13),
+          room_type: "Double Room · Shared Bathroom",
+          occupancy: 2,
+          total_price: 140,
+          currency: "EUR",
+        },
+      });
+    }
+
+    // ── Expenses so analytics isn't empty ──
+    await ctx.db.insert("expenses", {
+      category: "food", amount: 215.4, currency: "EUR", date: day(-3),
+      description: "Souk run — produce, fish, spices",
+    });
+    await ctx.db.insert("expenses", {
+      category: "equipment", amount: 150, currency: "EUR", date: day(-7),
+      description: "Wetsuit repairs + new leashes",
+    });
+    await ctx.db.insert("expenses", {
+      category: "utilities", amount: 96.5, currency: "EUR", date: day(-10),
+      description: "Electricity + water",
+    });
+
+    await ctx.db.insert("auditLogs", {
+      actorName: "System",
+      action: "seed.demoBookings",
+      entity: "bookings",
+      summary: "Seeded demo bookings, payments and activities on the real rooms",
+    });
+    return "Seeded 7 demo bookings with payments, activities, requests and expenses.";
+  },
+});

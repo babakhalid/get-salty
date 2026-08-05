@@ -265,7 +265,7 @@ function RoomsTab() {
               floor: String(form.get("floor")) || undefined,
               status: form.get("status") as "available" | "maintenance",
               description: String(form.get("description")) || undefined,
-              imageUrl: String(form.get("imageUrl")) || undefined,
+              imageUrl: editingRoom?.imageUrl,
               bedCount: form.get("bedCount") ? Number(form.get("bedCount")) : undefined,
             });
             setEditing(null);
@@ -341,9 +341,6 @@ function RoomsTab() {
               </span>
             </div>
           )}
-          <Field label="Photo URL (alternative)" hint="Used only when no photo is uploaded">
-            <Input name="imageUrl" defaultValue={editingRoom?.imageUrl} placeholder="/rooms/…jpg or https://…" />
-          </Field>
           <Button type="submit">{editingRoom ? "Save changes" : "Create room"}</Button>
         </form>
       </Drawer>

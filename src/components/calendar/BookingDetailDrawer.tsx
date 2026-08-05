@@ -3,6 +3,7 @@ import { useMutation, useQuery } from "convex/react";
 import {
   Check,
   Copy,
+  FilePdf,
   ForkKnife,
   Plus,
   Trash,
@@ -21,6 +22,7 @@ import {
   STATUS_TONE,
 } from "../ui";
 import { eur, isoToday, prettyDate, SOURCE_LABELS, STATUS_LABELS } from "../../lib/format";
+import { downloadBookingConfirmation } from "../../lib/bookingConfirmationPdf";
 
 const NEXT_STATUS: Record<string, { label: string; to: "confirmed" | "checked_in" | "checked_out" }[]> = {
   inquiry: [{ label: "Confirm", to: "confirmed" }],
@@ -99,6 +101,28 @@ export default function BookingDetailDrawer({
               </span>
             )}
             <div className="ml-auto flex gap-2">
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() =>
+                  downloadBookingConfirmation({
+                    guestName: detail.guest?.fullName ?? "Guest",
+                    guestCountry: detail.guest?.country,
+                    reservationCode: booking.reservationCode,
+                    bookingDate: booking._creationTime,
+                    roomName: detail.room?.name ?? "",
+                    roomTypeName: detail.roomType?.name,
+                    packageName: detail.pkg?.name,
+                    guests: booking.adults + booking.children,
+                    checkIn: booking.checkIn,
+                    checkOut: booking.checkOut,
+                    total: booking.totalAmount,
+                    paid: detail.paid,
+                  })
+                }
+              >
+                <FilePdf size={14} weight="duotone" /> Confirmation PDF
+              </Button>
               {(NEXT_STATUS[booking.status] ?? []).map((action) => (
                 <Button
                   key={action.to}

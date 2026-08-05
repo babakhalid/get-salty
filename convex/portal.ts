@@ -32,6 +32,7 @@ export const stay = query({
       ctx.db.get(booking.roomId),
     ]);
     const roomType = room ? await ctx.db.get(room.roomTypeId) : null;
+    const pkg = booking.packageId ? await ctx.db.get(booking.packageId) : null;
     const [activities, services, myRequests, myActivities, myPayments] =
       await Promise.all([
         ctx.db.query("activities").collect(),
@@ -56,6 +57,9 @@ export const stay = query({
     const activityById = new Map(activities.map((a) => [a._id, a]));
     return {
       guestName: guest?.fullName ?? "Guest",
+      guestCountry: guest?.country,
+      packageName: pkg?.name,
+      createdAt: booking._creationTime,
       surfLevel: guest?.surfLevel,
       allergies: guest?.allergies,
       reservationCode: booking.reservationCode,

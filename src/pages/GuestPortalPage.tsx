@@ -3,7 +3,7 @@ import { useParams } from "react-router";
 import { useMutation, useQuery } from "convex/react";
 import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
-import { Check, ShoppingBagOpen } from "@phosphor-icons/react";
+import { Check, FilePdf, ShoppingBagOpen } from "@phosphor-icons/react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import {
@@ -19,6 +19,7 @@ import {
 } from "../components/ui";
 import { eur, prettyDate } from "../lib/format";
 import PaymentSection from "../components/portal/PaymentSection";
+import { downloadBookingConfirmation } from "../lib/bookingConfirmationPdf";
 
 export default function GuestPortalPage() {
   const { token = "" } = useParams();
@@ -181,6 +182,28 @@ export default function GuestPortalPage() {
               <p className="num mt-0.5 font-semibold">{stay.adults + stay.children}</p>
             </div>
           </div>
+          <button
+            onClick={() =>
+              downloadBookingConfirmation({
+                guestName: stay.guestName,
+                guestCountry: stay.guestCountry,
+                reservationCode: stay.reservationCode,
+                bookingDate: stay.createdAt,
+                roomName: stay.roomName ?? "",
+                roomTypeName: stay.roomTypeName,
+                packageName: stay.packageName,
+                guests: stay.adults + stay.children,
+                checkIn: stay.checkIn,
+                checkOut: stay.checkOut,
+                total: stay.money.total,
+                paid: stay.money.paid,
+              })
+            }
+            className="portal-item mt-4 inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-4 py-2 text-sm font-semibold text-sand-50 transition-colors hover:bg-white/20 cursor-pointer"
+          >
+            <FilePdf size={16} weight="duotone" />
+            Download booking confirmation
+          </button>
         </div>
       </div>
 

@@ -78,6 +78,7 @@ export const detail = query({
       booking.packageId ? ctx.db.get(booking.packageId) : null,
     ]);
     const bed = booking.bedId ? await ctx.db.get(booking.bedId) : null;
+    const roomType = room ? await ctx.db.get(room.roomTypeId) : null;
     const [acts, servs, pays, requests] = await Promise.all([
       ctx.db
         .query("bookingActivities")
@@ -110,6 +111,7 @@ export const detail = query({
       booking,
       guest,
       room,
+      roomType,
       bed,
       pkg,
       activities: acts.map((a, i) => ({

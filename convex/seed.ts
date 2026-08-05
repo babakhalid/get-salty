@@ -542,3 +542,91 @@ export const addGuest = internalMutation({
     return `Added guest ${args.fullName} (${id})`;
   },
 });
+
+/**
+ * Get Salty real inventory: wipes the demo rooms/bookings and creates the
+ * nine real rooms with photos. Idempotent — skips if "Tide Room" exists.
+ * Run with: npx convex run seed:setupRealRooms (add --prod for production)
+ */
+export const setupRealRooms = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const existingRooms = await ctx.db.query("rooms").collect();
+    if (existingRooms.some((r) => r.name === "Tide Room")) {
+      return "Real rooms already set up — skipping.";
+    }
+
+    // Wipe demo data that references the old inventory
+    for (const table of [
+      "payments", "bookingActivities", "bookingServices", "guestRequests",
+      "channelRequests", "bookings", "guests", "beds", "rooms", "roomTypes",
+    ] as const) {
+      const rows = await ctx.db.query(table).collect();
+      for (const row of rows) await ctx.db.delete(row._id);
+    }
+
+    // Room types
+    const doubleShared = await ctx.db.insert("roomTypes", {
+      name: "Double Room · Shared Bathroom", mode: "private",
+      capacity: 2, basePrice: 35, amenities: ["Shared bathroom"],
+    });
+    const twinShared = await ctx.db.insert("roomTypes", {
+      name: "Twin Room · Shared Bathroom", mode: "private",
+      capacity: 2, basePrice: 35, amenities: ["Two single beds", "Shared bathroom"],
+    });
+    const privateBath = await ctx.db.insert("roomTypes", {
+      name: "Double or Twin · Private Bathroom", mode: "private",
+      capacity: 2, basePrice: 45, amenities: ["Private en-suite bathroom"],
+    });
+    const triple = await ctx.db.insert("roomTypes", {
+      name: "Triple Room · Shared Bathroom", mode: "private",
+      capacity: 3, basePrice: 45, amenities: ["Three single beds", "Shared bathroom"],
+    });
+    const apartment = await ctx.db.insert("roomTypes", {
+      name: "Entire Apartment", mode: "private",
+      capacity: 4, basePrice: 90, amenities: ["Two bedrooms", "Private kitchen", "Living space"],
+    });
+
+    const rooms: {
+      name: string; typeId: typeof doubleShared; description: string; image: string;
+    }[] = [
+      { name: "Tide Room", typeId: twinShared, image: "/rooms/tide-room.jpg",
+        description: "Two singles, a balcony, and all the light you need to start the day." },
+      { name: "Ocean Suite", typeId: privateBath, image: "/rooms/ocean-suite.jpg",
+        description: "Relax in comfort with your own private en-suite bathroom." },
+      { name: "Seaside Trio", typeId: triple, image: "/rooms/seaside-trio.jpg",
+        description: "Three singles and shared facilities — ideal for a group of friends." },
+      { name: "Sunset Double", typeId: doubleShared, image: "/rooms/sunset-double.jpg",
+        description: "A warm double room with its own balcony — perfect for evening light." },
+      { name: "Coastal Room", typeId: doubleShared, image: "/rooms/coastal-room.jpg",
+        description: "A cosy, compact double — clean, simple, and everything you need." },
+      { name: "Salt Room", typeId: doubleShared, image: "/rooms/salt-room.jpg",
+        description: "A simply furnished double — two singles, good light, easy access." },
+      { name: "Golden Room", typeId: doubleShared, image: "/rooms/golden-room.jpg",
+        description: "Warm tones, a private balcony, and a double bed to come home to." },
+      { name: "Tide Twin", typeId: twinShared, image: "/rooms/tide-twin.jpg",
+        description: "Two singles and a striped rug — laid-back and easy on the eye." },
+      { name: "The Salty Flat", typeId: apartment, image: "/rooms/salty-flat.jpg",
+        description: "Two bedrooms, a private kitchen, and your own living space. The most independent way to stay." },
+    ];
+    for (let i = 0; i < rooms.length; i++) {
+      const room = rooms[i];
+      await ctx.db.insert("rooms", {
+        roomTypeId: room.typeId,
+        name: room.name,
+        status: "available",
+        description: room.description,
+        imageUrl: room.image,
+        sortOrder: i,
+      });
+    }
+
+    await ctx.db.insert("auditLogs", {
+      actorName: "System",
+      action: "seed.setupRealRooms",
+      entity: "rooms",
+      summary: "Replaced demo inventory with the 9 real Get Salty rooms",
+    });
+    return "Created 9 real rooms across 5 room types.";
+  },
+});

@@ -185,8 +185,33 @@ export default function GuestPortalPage() {
       </div>
 
       <div className="mx-auto max-w-xl px-6 pb-20">
+        {/* Your room */}
+        {stay.roomImageUrl && (
+          <div
+            className="portal-item -mt-6 overflow-hidden rounded-xl2 border border-sand-200 bg-white"
+            style={{ boxShadow: "var(--shadow-lift)" }}
+          >
+            <div className="relative">
+              <img
+                src={stay.roomImageUrl}
+                alt={stay.roomName ?? "Your room"}
+                className="h-56 w-full object-cover"
+                loading="lazy"
+              />
+              <span className="absolute bottom-3 left-3 rounded-full bg-ink/60 px-3 py-1 text-xs font-bold text-sand-50 backdrop-blur-sm">
+                {stay.roomName} · {stay.roomTypeName}
+              </span>
+            </div>
+            {stay.roomDescription && (
+              <p className="px-5 py-4 text-sm leading-relaxed text-ink-soft">
+                {stay.roomDescription}
+              </p>
+            )}
+          </div>
+        )}
+
         {/* Preferences */}
-        <section className="portal-item -mt-6 rounded-xl2 border border-sand-200 bg-white p-6" style={{ boxShadow: "var(--shadow-lift)" }}>
+        <section className={`portal-item ${stay.roomImageUrl ? "mt-8" : "-mt-6"} rounded-xl2 border border-sand-200 bg-white p-6`} style={{ boxShadow: "var(--shadow-lift)" }}>
           <h2 className="font-bold tracking-tight">About you</h2>
           <p className="mt-1 text-sm text-ink-faint">
             Helps us group surf sessions and cook the right food.

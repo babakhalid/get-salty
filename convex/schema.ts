@@ -83,6 +83,8 @@ export default defineSchema({
     floor: v.optional(v.string()),
     status: v.union(v.literal("available"), v.literal("maintenance")),
     notes: v.optional(v.string()),
+    description: v.optional(v.string()), // guest-facing blurb
+    imageUrl: v.optional(v.string()), // guest-facing photo (public path or URL)
     sortOrder: v.number(),
   }).index("by_roomType", ["roomTypeId"]),
 

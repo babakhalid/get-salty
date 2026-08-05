@@ -220,6 +220,8 @@ function RoomsTab() {
               name: String(form.get("name")),
               floor: String(form.get("floor")) || undefined,
               status: form.get("status") as "available" | "maintenance",
+              description: String(form.get("description")) || undefined,
+              imageUrl: String(form.get("imageUrl")) || undefined,
               bedCount: form.get("bedCount") ? Number(form.get("bedCount")) : undefined,
             });
             setEditing(null);
@@ -254,6 +256,12 @@ function RoomsTab() {
               />
             </Field>
           </div>
+          <Field label="Guest-facing description">
+            <Textarea name="description" defaultValue={editingRoom?.description} placeholder="Shown on the guest portal" />
+          </Field>
+          <Field label="Photo URL" hint="e.g. /rooms/tide-room.jpg (files in public/rooms)">
+            <Input name="imageUrl" defaultValue={editingRoom?.imageUrl} placeholder="/rooms/…jpg or https://…" />
+          </Field>
           <Button type="submit">{editingRoom ? "Save changes" : "Create room"}</Button>
         </form>
       </Drawer>

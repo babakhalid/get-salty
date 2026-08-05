@@ -62,6 +62,8 @@ export const stay = query({
       checkOut: booking.checkOut,
       roomName: room?.name,
       roomTypeName: roomType?.name,
+      roomDescription: room?.description,
+      roomImageUrl: room?.imageUrl,
       adults: booking.adults,
       children: booking.children,
       money: {

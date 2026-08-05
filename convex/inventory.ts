@@ -68,6 +68,8 @@ export const upsertRoom = mutation({
     floor: v.optional(v.string()),
     status: v.union(v.literal("available"), v.literal("maintenance")),
     notes: v.optional(v.string()),
+    description: v.optional(v.string()),
+    imageUrl: v.optional(v.string()),
     sortOrder: v.optional(v.number()),
     bedCount: v.optional(v.number()), // for dorms: sync beds to this count
   },

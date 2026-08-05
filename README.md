@@ -24,15 +24,16 @@ npx convex dev
 npm run dev
 ```
 
-Data lives in **Convex cloud** — team `baba-khalid`, project `nomaya-data`
+Data lives in **Convex cloud** — team `baba-khalid`, project `get-salty`
 (eu-west-1). Dashboard: https://dashboard.convex.dev
 
 | Environment | Convex deployment | Frontend |
 | --- | --- | --- |
-| dev | `tremendous-bison-197` | http://localhost:5175 |
-| production | `tremendous-dog-462` | **https://nomaya-pi.vercel.app** |
+| dev | `graceful-dotterel-332` | http://localhost:5173+ |
+| production | `harmless-llama-517` | **https://getsalty.vercel.app** |
 
-GitHub: https://github.com/babakhalid/nomaya · Vercel project: `nomaya`
+GitHub: https://github.com/babakhalid/get-salty · Vercel project: `getsalty`
+Convex project: `get-salty` (team `baba-khalid`)
 
 The **first account created on the sign-in page becomes admin**; everyone after
 starts as `crew` (promote them in Settings → Team).
@@ -53,9 +54,9 @@ npx vercel deploy --prod    # push frontend (or connect the GitHub repo in Verce
 git push                    # keep the repo in sync
 ```
 
-Vercel prod env: `VITE_CONVEX_URL=https://tremendous-dog-462.eu-west-1.convex.cloud`.
-Convex prod env: `JWT_PRIVATE_KEY`, `JWKS`, `HERMES_API_KEY`, `SITE_URL=https://nomaya-pi.vercel.app`.
-Hermes production endpoint: `https://tremendous-dog-462.eu-west-1.convex.site/hermes/verify`.
+Vercel prod env: `VITE_CONVEX_URL=https://harmless-llama-517.eu-west-1.convex.cloud`.
+Convex prod env: `JWT_PRIVATE_KEY`, `JWKS`, `HERMES_API_KEY`, `SITE_URL=https://getsalty.vercel.app`.
+Hermes production endpoint: `https://harmless-llama-517.eu-west-1.convex.site/hermes/verify`.
 
 ## Structure
 

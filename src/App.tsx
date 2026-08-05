@@ -18,6 +18,7 @@ import SettingsPage from "./pages/SettingsPage";
 import GuestPortalPage from "./pages/GuestPortalPage";
 import BookPage from "./pages/BookPage";
 import GuestsPage from "./pages/GuestsPage";
+import LandingPage from "./pages/LandingPage";
 
 function RequireRole({
   min,
@@ -38,6 +39,7 @@ export default function App() {
   return (
     <Routes>
       {/* Public pages — outside auth entirely */}
+      <Route path="/" element={<LandingPage />} />
       <Route path="/guest/:token" element={<GuestPortalPage />} />
       <Route path="/book" element={<BookPage />} />
 

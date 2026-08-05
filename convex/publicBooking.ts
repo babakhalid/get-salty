@@ -55,40 +55,40 @@ export const availability = query({
 
     const taken = bookings.filter((b) => overlaps(b, args.checkIn, args.checkOut));
 
-    const types = roomTypes.map((type) => {
-      const typeRooms = rooms.filter(
-        (r) => r.roomTypeId === type._id && r.status === "available",
-      );
-      let unitsLeft = 0;
-      if (type.mode === "dorm") {
-        for (const room of typeRooms) {
+    // One card per actual room — guests pick the room they saw in the photos.
+    const typeById = new Map(roomTypes.map((t) => [t._id, t]));
+    const roomCards = rooms
+      .filter((r) => r.status === "available")
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+      .map((room) => {
+        const type = typeById.get(room.roomTypeId);
+        let available: boolean;
+        if (type?.mode === "dorm") {
           const roomBeds = beds.filter((b) => b.roomId === room._id);
           const takenBeds = new Set(
             taken.filter((b) => b.roomId === room._id && b.bedId).map((b) => b.bedId),
           );
-          unitsLeft += roomBeds.length - takenBeds.size;
+          available = roomBeds.length - takenBeds.size > 0;
+        } else {
+          available = !taken.some((b) => b.roomId === room._id);
         }
-      } else {
-        unitsLeft = typeRooms.filter(
-          (room) => !taken.some((b) => b.roomId === room._id),
-        ).length;
-      }
-      return {
-        roomTypeId: type._id,
-        name: type.name,
-        description: type.description,
-        mode: type.mode,
-        capacity: type.capacity,
-        pricePerNight: type.basePrice,
-        amenities: type.amenities ?? [],
-        unitsLeft,
-        totalForStay: type.basePrice * nights,
-      };
-    });
+        return {
+          roomId: room._id,
+          name: room.name,
+          description: room.description,
+          imageUrl: room.imageUrl,
+          typeName: type?.name ?? "",
+          mode: type?.mode ?? "private",
+          capacity: type?.capacity ?? 2,
+          pricePerNight: type?.basePrice ?? 0,
+          totalForStay: (type?.basePrice ?? 0) * nights,
+          available,
+        };
+      });
 
     return {
       nights,
-      roomTypes: types,
+      rooms: roomCards,
       // packages designed for exactly this stay length
       packages: packages
         .filter((p) => p.active && p.nights === nights)
@@ -114,7 +114,7 @@ export const createRequest = mutation({
   args: {
     checkIn: v.string(),
     checkOut: v.string(),
-    roomTypeId: v.id("roomTypes"),
+    roomId: v.id("rooms"),
     packageId: v.optional(v.id("packages")),
     services: v.optional(
       v.array(v.object({ serviceId: v.id("services"), qty: v.number() })),
@@ -135,7 +135,11 @@ export const createRequest = mutation({
     if (fullName.length < 2 || fullName.length > 80) throw new Error("Please enter your name");
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(args.email)) throw new Error("Please enter a valid email");
 
-    const type = await ctx.db.get(args.roomTypeId);
+    const chosenRoom = await ctx.db.get(args.roomId);
+    if (!chosenRoom || chosenRoom.status !== "available") {
+      throw new Error("Room not found");
+    }
+    const type = await ctx.db.get(chosenRoom.roomTypeId);
     if (!type) throw new Error("Room type not found");
     if (args.adults < 1) throw new Error("At least one adult required");
     const pax = args.adults + args.children;
@@ -146,38 +150,27 @@ export const createRequest = mutation({
       throw new Error(`${type.name} sleeps up to ${type.capacity}`);
     }
 
-    // Find the first free room (or dorm bed) of the requested type.
-    const [rooms, beds, bookings] = await Promise.all([
-      ctx.db.query("rooms").collect(),
+    // Confirm the chosen room is still free (or grab a free bed in a dorm).
+    const [beds, bookings] = await Promise.all([
       ctx.db.query("beds").collect(),
       ctx.db.query("bookings").collect(),
     ]);
     const taken = bookings.filter((b) => overlaps(b, args.checkIn, args.checkOut));
-    const typeRooms = rooms
-      .filter((r) => r.roomTypeId === args.roomTypeId && r.status === "available")
-      .sort((a, b) => a.sortOrder - b.sortOrder);
 
-    let roomId = null;
+    const roomId = chosenRoom._id;
     let bedId = undefined;
     if (type.mode === "dorm") {
-      outer: for (const room of typeRooms) {
-        const takenBeds = new Set(
-          taken.filter((b) => b.roomId === room._id && b.bedId).map((b) => b.bedId),
-        );
-        for (const bed of beds
-          .filter((b) => b.roomId === room._id)
-          .sort((a, b) => a.sortOrder - b.sortOrder)) {
-          if (!takenBeds.has(bed._id)) {
-            roomId = room._id;
-            bedId = bed._id;
-            break outer;
-          }
-        }
-      }
-    } else {
-      roomId = typeRooms.find((room) => !taken.some((b) => b.roomId === room._id))?._id ?? null;
+      const takenBeds = new Set(
+        taken.filter((b) => b.roomId === roomId && b.bedId).map((b) => b.bedId),
+      );
+      bedId = beds
+        .filter((b) => b.roomId === roomId)
+        .sort((a, b) => a.sortOrder - b.sortOrder)
+        .find((b) => !takenBeds.has(b._id))?._id;
+      if (!bedId) throw new Error("Sorry — this room just filled up for those dates");
+    } else if (taken.some((b) => b.roomId === roomId)) {
+      throw new Error("Sorry — this room just got booked for those dates");
     }
-    if (!roomId) throw new Error("Sorry — nothing free for those dates anymore");
 
     let totalAmount = type.basePrice * nights;
     if (args.packageId) {
@@ -265,7 +258,7 @@ export const createRequest = mutation({
       action: "booking.selfService",
       entity: "bookings",
       entityId: bookingId,
-      summary: `Self-service request: ${fullName} · ${args.checkIn} → ${args.checkOut} · ${type.name}`,
+      summary: `Self-service request: ${fullName} · ${args.checkIn} → ${args.checkOut} · ${chosenRoom.name}`,
       after: {
         checkIn: args.checkIn,
         checkOut: args.checkOut,
@@ -275,6 +268,6 @@ export const createRequest = mutation({
       },
     });
 
-    return { portalToken, reservationCode, totalAmount, nights, roomTypeName: type.name };
+    return { portalToken, reservationCode, totalAmount, nights, roomTypeName: chosenRoom.name };
   },
 });

@@ -35,7 +35,7 @@ export default function BookPage() {
   const today = format(new Date(), "yyyy-MM-dd");
   const [checkIn, setCheckIn] = useState(format(addDays(new Date(), 7), "yyyy-MM-dd"));
   const [checkOut, setCheckOut] = useState(format(addDays(new Date(), 14), "yyyy-MM-dd"));
-  const [roomTypeId, setRoomTypeId] = useState<Id<"roomTypes"> | null>(null);
+  const [roomId, setRoomId] = useState<Id<"rooms"> | null>(null);
   const [packageId, setPackageId] = useState<string>("");
   const [selectedServices, setSelectedServices] = useState<Record<string, number>>({});
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
@@ -61,7 +61,7 @@ export default function BookPage() {
     { scope, dependencies: [confirmation === null] },
   );
 
-  const selectedType = availability?.roomTypes.find((t) => t.roomTypeId === roomTypeId);
+  const selectedType = availability?.rooms.find((r) => r.roomId === roomId);
   const selectedPackage = availability?.packages.find((p) => p.packageId === packageId);
   const servicesTotal = Object.entries(selectedServices).reduce((sum, [id, qty]) => {
     const service = availability?.services.find((s) => s.serviceId === id);
@@ -88,7 +88,7 @@ export default function BookPage() {
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (!roomTypeId) return;
+    if (!roomId) return;
     setError(null);
     setSubmitting(true);
     const form = new FormData(e.currentTarget);
@@ -96,7 +96,7 @@ export default function BookPage() {
       const result = await createRequest({
         checkIn,
         checkOut,
-        roomTypeId,
+        roomId,
         packageId: packageId ? (packageId as Id<"packages">) : undefined,
         services: Object.entries(selectedServices).map(([serviceId, qty]) => ({
           serviceId: serviceId as Id<"services">,
@@ -234,53 +234,67 @@ export default function BookPage() {
           {availability === undefined && datesValid ? (
             <SkeletonRows count={3} />
           ) : availability ? (
-            <div className="flex flex-col gap-3">
-              {availability.roomTypes.map((type) => {
-                const soldOut = type.unitsLeft === 0;
-                const selected = roomTypeId === type.roomTypeId;
+            <div className="grid gap-4 sm:grid-cols-2">
+              {availability.rooms.map((room) => {
+                const soldOut = !room.available;
+                const selected = roomId === room.roomId;
                 return (
                   <button
-                    key={type.roomTypeId}
+                    key={room.roomId}
                     type="button"
                     disabled={soldOut}
                     onClick={() => {
-                      setRoomTypeId(type.roomTypeId);
+                      setRoomId(room.roomId);
                       setPackageId("");
                     }}
                     className={cx(
-                      "rounded-xl2 border bg-white p-5 text-left transition-all",
-                      soldOut && "opacity-45",
+                      "overflow-hidden rounded-xl2 border bg-white text-left transition-all",
+                      soldOut && "opacity-50",
                       selected
-                        ? "border-ocean-500 shadow-[0_0_0_1px_var(--color-ocean-500)]"
+                        ? "border-ocean-500 shadow-[0_0_0_2px_var(--color-ocean-500)]"
                         : "border-sand-200 hover:border-sand-300 cursor-pointer",
                     )}
+                    style={{ boxShadow: selected ? undefined : "var(--shadow-diffuse)" }}
                   >
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <p className="font-bold">{type.name}</p>
-                        <p className="mt-0.5 text-sm text-ink-faint">{type.description}</p>
+                    {room.imageUrl && (
+                      <div className="relative">
+                        <img
+                          src={room.imageUrl}
+                          alt={room.name}
+                          loading="lazy"
+                          className="h-40 w-full object-cover"
+                        />
+                        {soldOut && (
+                          <span className="absolute inset-0 flex items-center justify-center bg-ink/45 text-sm font-bold text-sand-50">
+                            Booked for these dates
+                          </span>
+                        )}
+                        {selected && (
+                          <span className="absolute right-2 top-2 rounded-full bg-ocean-600 px-2.5 py-1 text-[11px] font-black text-sand-50">
+                            Selected
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    <div className="flex items-start justify-between gap-3 p-4">
+                      <div className="min-w-0">
+                        <p className="font-bold">{room.name}</p>
+                        <p className="mt-0.5 line-clamp-2 text-xs text-ink-faint">
+                          {room.description}
+                        </p>
                         <p className="mt-2 flex items-center gap-1.5 text-xs text-ink-soft">
                           <Users size={13} />
-                          {type.mode === "dorm"
-                            ? "per bed · shared dorm"
-                            : `sleeps up to ${type.capacity}`}
-                          {" · "}
-                          {soldOut ? (
-                            <span className="font-semibold text-coral">full for these dates</span>
-                          ) : (
-                            <span className="font-semibold text-kelp">
-                              {type.unitsLeft} left
-                            </span>
-                          )}
+                          {room.mode === "dorm"
+                            ? "per bed · shared"
+                            : `sleeps ${room.capacity}`}
+                          <span className="text-ink-faint">· {room.typeName}</span>
                         </p>
                       </div>
                       <div className="shrink-0 text-right">
                         <p className="num text-lg font-bold text-ocean-700">
-                          {eur(type.pricePerNight)}
+                          {eur(room.pricePerNight)}
                         </p>
-                        <p className="text-xs text-ink-faint">
-                          /night{type.mode === "dorm" ? " per bed" : ""}
-                        </p>
+                        <p className="text-[11px] text-ink-faint">/night</p>
                       </div>
                     </div>
                   </button>

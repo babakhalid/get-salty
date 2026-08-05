@@ -149,7 +149,7 @@ export default function GuestPortalPage() {
             <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/10">
               <Waves size={20} weight="bold" />
             </span>
-            <span className="font-black tracking-tight">Tamraght Surf House</span>
+            <span className="font-black tracking-tight">Get Salty Surf Camp</span>
           </div>
           <h1 className="portal-item mt-8 text-3xl font-black tracking-tighter">
             Salam, {stay.guestName.split(" ")[0]}.
@@ -406,7 +406,7 @@ export default function GuestPortalPage() {
         )}
 
         <p className="portal-item mt-10 text-center text-xs text-ink-faint">
-          Tamraght Surf House · Tamraght, Morocco · See you in the water.
+          Get Salty Surf Camp · Tamraght, Morocco · See you in the water.
         </p>
       </div>
     </div>

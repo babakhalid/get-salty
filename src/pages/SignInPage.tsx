@@ -73,7 +73,7 @@ export default function SignInPage() {
             <Waves size={22} weight="bold" />
           </span>
           <span className="text-lg font-black tracking-tight">
-            Tamraght Surf House
+            Get Salty Surf Camp
           </span>
         </div>
 
@@ -120,7 +120,7 @@ export default function SignInPage() {
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-ocean-700 text-sand-50">
               <Waves size={20} weight="bold" />
             </span>
-            <span className="font-black tracking-tight">Tamraght Surf House</span>
+            <span className="font-black tracking-tight">Get Salty Surf Camp</span>
           </div>
 
           <h2 className="form-item text-2xl font-black tracking-tight">

@@ -180,7 +180,7 @@ export default function BookPage() {
             <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/10">
               <Waves size={20} weight="bold" />
             </span>
-            <span className="font-black tracking-tight">Tamraght Surf House</span>
+            <span className="font-black tracking-tight">Get Salty Surf Camp</span>
           </div>
           <h1 className="book-item mt-8 max-w-lg text-4xl font-black leading-[1.05] tracking-tighter">
             Pick your dates. We'll keep a bed warm.
@@ -520,7 +520,7 @@ export default function BookPage() {
         )}
 
         <p className="book-item mt-10 text-center text-xs text-ink-faint">
-          Tamraght Surf House · Tamraght, Morocco · See you in the water.
+          Get Salty Surf Camp · Tamraght, Morocco · See you in the water.
         </p>
       </div>
     </div>

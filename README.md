@@ -1,6 +1,6 @@
-# Tamraght Surf House — PMS
+# Get Salty — Tamraght Surf Camp PMS
 
-A property-management system for a surf camp: channel-manager-style calendar
+Get Salty's property-management system (fork of the Nomaya PMS): channel-manager-style calendar
 (rooms **and** dorm beds), booking channels hub (Channex.io-shaped, sandboxed),
 payment tracking + accounting exports, guest portal, statistics dashboard and a
 full audit log.

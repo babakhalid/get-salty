@@ -31,18 +31,27 @@ export const stay = query({
       ctx.db.get(booking.roomId),
     ]);
     const roomType = room ? await ctx.db.get(room.roomTypeId) : null;
-    const [activities, services, myRequests, myActivities] = await Promise.all([
-      ctx.db.query("activities").collect(),
-      ctx.db.query("services").collect(),
-      ctx.db
-        .query("guestRequests")
-        .withIndex("by_booking", (q) => q.eq("bookingId", booking._id))
-        .collect(),
-      ctx.db
-        .query("bookingActivities")
-        .withIndex("by_booking", (q) => q.eq("bookingId", booking._id))
-        .collect(),
-    ]);
+    const [activities, services, myRequests, myActivities, myPayments] =
+      await Promise.all([
+        ctx.db.query("activities").collect(),
+        ctx.db.query("services").collect(),
+        ctx.db
+          .query("guestRequests")
+          .withIndex("by_booking", (q) => q.eq("bookingId", booking._id))
+          .collect(),
+        ctx.db
+          .query("bookingActivities")
+          .withIndex("by_booking", (q) => q.eq("bookingId", booking._id))
+          .collect(),
+        ctx.db
+          .query("payments")
+          .withIndex("by_booking", (q) => q.eq("bookingId", booking._id))
+          .collect(),
+      ]);
+    const paid = myPayments.reduce(
+      (sum, p) => sum + (p.direction === "in" ? p.amount : -p.amount),
+      0,
+    );
     const activityById = new Map(activities.map((a) => [a._id, a]));
     return {
       guestName: guest?.fullName ?? "Guest",
@@ -55,6 +64,20 @@ export const stay = query({
       roomTypeName: roomType?.name,
       adults: booking.adults,
       children: booking.children,
+      money: {
+        total: booking.totalAmount,
+        paid: Math.round(paid * 100) / 100,
+        balance: Math.round((booking.totalAmount - paid) * 100) / 100,
+        currency: booking.currency,
+      },
+      payments: myPayments
+        .sort((a, b) => b.date.localeCompare(a.date))
+        .map((p) => ({
+          amount: p.amount,
+          direction: p.direction,
+          method: p.method,
+          date: p.date,
+        })),
       catalog: {
         activities: activities
           .filter((a) => a.active)
@@ -140,6 +163,98 @@ export const updatePreferences = mutation({
       summary: `${guest.fullName} updated preferences via portal`,
       before: { surfLevel: guest.surfLevel, allergies: guest.allergies },
       after: patch,
+    });
+  },
+});
+
+/**
+ * SIMULATED card payment (Stripe-style checkout, no real gateway).
+ * Records a real `payments` row so balances update live, clearly tagged
+ * as a simulation in the note and the audit log.
+ */
+export const simulateCardPayment = mutation({
+  args: {
+    token: v.string(),
+    amount: v.number(),
+    cardLast4: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const booking = await bookingByToken(ctx, args.token);
+    if (!booking) throw new Error("Invalid link");
+    if (!/^\d{4}$/.test(args.cardLast4)) throw new Error("Invalid card");
+
+    const payments = await ctx.db
+      .query("payments")
+      .withIndex("by_booking", (q) => q.eq("bookingId", booking._id))
+      .collect();
+    const paid = payments.reduce(
+      (sum, p) => sum + (p.direction === "in" ? p.amount : -p.amount),
+      0,
+    );
+    const balance = Math.round((booking.totalAmount - paid) * 100) / 100;
+    const amount = Math.round(args.amount * 100) / 100;
+    if (amount < 1) throw new Error("Minimum payment is €1");
+    if (amount > balance + 0.005) {
+      throw new Error(`Amount exceeds the outstanding balance (€${balance.toFixed(2)})`);
+    }
+
+    const guest = await ctx.db.get(booking.guestId);
+    const today = new Date().toISOString().slice(0, 10);
+    const id = await ctx.db.insert("payments", {
+      bookingId: booking._id,
+      amount,
+      currency: "EUR",
+      method: "card",
+      direction: "in",
+      date: today,
+      note: `[SIMULATION] Stripe checkout by guest · card ••••${args.cardLast4}`,
+    });
+    await ctx.db.insert("auditLogs", {
+      actorName: `Guest: ${guest?.fullName ?? "Unknown"}`,
+      action: "portal.cardPayment",
+      entity: "payments",
+      entityId: id,
+      summary: `${guest?.fullName} paid €${amount.toFixed(2)} by card via portal (SIMULATION)`,
+      after: { amount, cardLast4: args.cardLast4 },
+    });
+    return { paid: amount, newBalance: Math.round((balance - amount) * 100) / 100 };
+  },
+});
+
+/**
+ * SIMULATED bank transfer declaration — creates a pending guest request so
+ * the crew confirms receipt before recording the payment. Nothing is
+ * counted as paid until staff approve.
+ */
+export const declareBankTransfer = mutation({
+  args: {
+    token: v.string(),
+    amount: v.number(),
+    reference: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const booking = await bookingByToken(ctx, args.token);
+    if (!booking) throw new Error("Invalid link");
+    const amount = Math.round(args.amount * 100) / 100;
+    if (amount < 1) throw new Error("Minimum transfer is €1");
+    if (amount > 100000) throw new Error("Invalid amount");
+
+    const guest = await ctx.db.get(booking.guestId);
+    const id = await ctx.db.insert("guestRequests", {
+      bookingId: booking._id,
+      type: "requirement",
+      payload: {
+        note: `[SIMULATION] Bank transfer declared: €${amount.toFixed(2)} · ref ${booking.reservationCode ?? booking._id}${args.reference ? ` · guest ref: ${args.reference}` : ""} — confirm receipt, then record the payment.`,
+      },
+      status: "pending",
+    });
+    await ctx.db.insert("auditLogs", {
+      actorName: `Guest: ${guest?.fullName ?? "Unknown"}`,
+      action: "portal.declareTransfer",
+      entity: "guestRequests",
+      entityId: id,
+      summary: `${guest?.fullName} declared a bank transfer of €${amount.toFixed(2)} (SIMULATION)`,
+      after: { amount, reference: args.reference },
     });
   },
 });

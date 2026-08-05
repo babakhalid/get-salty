@@ -18,6 +18,7 @@ import {
   cx,
 } from "../components/ui";
 import { eur, prettyDate } from "../lib/format";
+import PaymentSection from "../components/portal/PaymentSection";
 
 export default function GuestPortalPage() {
   const { token = "" } = useParams();
@@ -351,6 +352,14 @@ export default function GuestPortalPage() {
             </p>
           )}
         </section>
+
+        {/* Bill & payment (simulation) */}
+        <PaymentSection
+          token={token}
+          money={stay.money}
+          payments={stay.payments}
+          reservationCode={stay.reservationCode}
+        />
 
         {/* Already booked + request history */}
         {(stay.booked.length > 0 || stay.requests.length > 0) && (

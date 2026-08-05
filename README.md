@@ -82,8 +82,8 @@ src/
 
 | Role    | Access                                              |
 | ------- | --------------------------------------------------- |
-| admin   | everything + team management + audit log            |
-| manager | all operations, settings, channels, analytics       |
+| admin   | everything + team management                        |
+| manager | all operations, settings, channels, analytics, audit log |
 | crew    | dashboard + calendar, check-in/out, record payments |
 
 Enforced **server-side** in every Convex function (`convex/lib/access.ts`).

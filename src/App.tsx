@@ -88,7 +88,7 @@ export default function App() {
                   <Route
                     path="/logs"
                     element={
-                      <RequireRole min="admin">
+                      <RequireRole min="manager">
                         <LogsPage />
                       </RequireRole>
                     }

@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { internalMutation, mutation, query } from "./_generated/server";
 import { logAudit, requireRole, requireUser } from "./lib/access";
 import { roleValidator } from "./schema";
 
@@ -17,7 +17,9 @@ export const me = query({
 export const list = query({
   args: {},
   handler: async (ctx) => {
-    await requireRole(ctx, "admin");
+    // Managers need the list for the audit-log filter; role/active
+    // mutations below remain admin-only.
+    await requireRole(ctx, "manager");
     return await ctx.db.query("users").collect();
   },
 });
@@ -57,5 +59,28 @@ export const setActive = mutation({
       before: { active: target.active },
       after: { active: args.active },
     });
+  },
+});
+
+/**
+ * Ops escape hatch (CLI only, not callable from clients):
+ * npx convex run users:forceRole '{"email": "...", "role": "admin"}' [--prod]
+ */
+export const forceRole = internalMutation({
+  args: { email: v.string(), role: roleValidator },
+  handler: async (ctx, args) => {
+    const users = await ctx.db.query("users").collect();
+    const user = users.find((u) => u.email === args.email);
+    if (!user) throw new Error(`No user with email ${args.email}`);
+    await ctx.db.patch(user._id, { role: args.role });
+    await logAudit(ctx, null, {
+      action: "user.setRole",
+      entity: "users",
+      entityId: user._id,
+      summary: `CLI: set ${user.name ?? user.email} role to ${args.role}`,
+      before: { role: user.role },
+      after: { role: args.role },
+    });
+    return `${user.name ?? user.email} is now ${args.role}`;
   },
 });

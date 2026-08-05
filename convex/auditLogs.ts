@@ -9,7 +9,7 @@ export const list = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    await requireRole(ctx, "admin");
+    await requireRole(ctx, "manager");
     const limit = Math.min(args.limit ?? 100, 400);
     let logs;
     if (args.actorId) {

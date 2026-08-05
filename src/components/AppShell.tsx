@@ -27,7 +27,7 @@ const NAV = [
   { to: "/channels", label: "Channels", icon: Plugs, min: "manager" },
   { to: "/analytics", label: "Analytics", icon: ChartLineUp, min: "manager" },
   { to: "/settings", label: "Settings", icon: GearSix, min: "manager" },
-  { to: "/logs", label: "Logs", icon: ClockCounterClockwise, min: "admin" },
+  { to: "/logs", label: "Logs", icon: ClockCounterClockwise, min: "manager" },
 ] as const;
 
 const RANK = { crew: 0, manager: 1, admin: 2 } as const;

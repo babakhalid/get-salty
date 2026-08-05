@@ -19,7 +19,6 @@ import GuestPortalPage from "./pages/GuestPortalPage";
 import BookPage from "./pages/BookPage";
 import GuestsPage from "./pages/GuestsPage";
 import RequestsPage from "./pages/RequestsPage";
-import LandingPage from "./pages/LandingPage";
 
 function RequireRole({
   min,
@@ -40,9 +39,11 @@ export default function App() {
   return (
     <Routes>
       {/* Public pages — outside auth entirely */}
-      <Route path="/" element={<LandingPage />} />
+      <Route path="/" element={<BookPage />} />
+      <Route path="/book" element={<Navigate to="/" replace />} />
       <Route path="/guest/:token" element={<GuestPortalPage />} />
-      <Route path="/book" element={<BookPage />} />
+      {/* Staff entrance — any backend link works; /admin is the memorable one */}
+      <Route path="/admin" element={<Navigate to="/dashboard" replace />} />
 
       <Route
         path="*"

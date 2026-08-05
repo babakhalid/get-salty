@@ -5,6 +5,7 @@ import {
   CaretRight,
   Copy,
   Check,
+  FilePdf,
   ForkKnife,
   MagnifyingGlass,
   PencilSimple,
@@ -27,6 +28,7 @@ import {
 } from "../components/ui";
 import { eur, prettyDate, SOURCE_LABELS, STATUS_LABELS } from "../lib/format";
 import BookingDetailDrawer from "../components/calendar/BookingDetailDrawer";
+import { downloadBookingConfirmation } from "../lib/bookingConfirmationPdf";
 
 const PAGE_SIZE = 10;
 
@@ -405,7 +407,7 @@ function GuestProfileDrawer({
                           )}
                         </span>
                       </div>
-                      <div className="mt-2 flex items-center gap-2">
+                      <div className="mt-2 flex items-center gap-4">
                         <button
                           onClick={async () => {
                             await navigator.clipboard.writeText(
@@ -425,6 +427,27 @@ function GuestProfileDrawer({
                               <Copy size={12} /> Portal link
                             </>
                           )}
+                        </button>
+                        <button
+                          onClick={() =>
+                            downloadBookingConfirmation({
+                              guestName: guest.fullName,
+                              guestCountry: guest.country,
+                              reservationCode: stay.reservationCode,
+                              bookingDate: stay.createdAt,
+                              roomName: stay.roomName,
+                              roomTypeName: stay.roomTypeName,
+                              packageName: stay.packageName,
+                              guests: stay.adults + stay.children,
+                              checkIn: stay.checkIn,
+                              checkOut: stay.checkOut,
+                              total: stay.totalAmount,
+                              paid: stay.paid,
+                            })
+                          }
+                          className="flex items-center gap-1 text-xs font-semibold text-ink-faint transition-colors hover:text-ocean-700 cursor-pointer"
+                        >
+                          <FilePdf size={12} weight="duotone" /> Confirmation PDF
                         </button>
                       </div>
                     </li>

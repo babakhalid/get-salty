@@ -85,7 +85,7 @@ export const profile = query({
 
     const history = await Promise.all(
       bookings.map(async (b) => {
-        const [room, payments, activities] = await Promise.all([
+        const [room, payments, activities, pkg] = await Promise.all([
           ctx.db.get(b.roomId),
           ctx.db
             .query("payments")
@@ -95,19 +95,25 @@ export const profile = query({
             .query("bookingActivities")
             .withIndex("by_booking", (q) => q.eq("bookingId", b._id))
             .collect(),
+          b.packageId ? ctx.db.get(b.packageId) : null,
         ]);
         const bed = b.bedId ? await ctx.db.get(b.bedId) : null;
+        const roomType = room ? await ctx.db.get(room.roomTypeId) : null;
         const paid = payments.reduce(
           (sum, p) => sum + (p.direction === "in" ? p.amount : -p.amount),
           0,
         );
         return {
           bookingId: b._id,
+          createdAt: b._creationTime,
+          reservationCode: b.reservationCode,
           checkIn: b.checkIn,
           checkOut: b.checkOut,
           status: b.status,
           source: b.source,
           roomName: room?.name ?? "—",
+          roomTypeName: roomType?.name,
+          packageName: pkg?.name,
           bedLabel: bed?.label,
           adults: b.adults,
           children: b.children,

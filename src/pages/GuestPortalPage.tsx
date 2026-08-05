@@ -3,7 +3,7 @@ import { useParams } from "react-router";
 import { useMutation, useQuery } from "convex/react";
 import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
-import { Check, FilePdf, ShoppingBagOpen } from "@phosphor-icons/react";
+import { Check, FilePdf, LockSimple, ShoppingBagOpen } from "@phosphor-icons/react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import {
@@ -182,28 +182,50 @@ export default function GuestPortalPage() {
               <p className="num mt-0.5 font-semibold">{stay.adults + stay.children}</p>
             </div>
           </div>
-          <button
-            onClick={() =>
-              downloadBookingConfirmation({
-                guestName: stay.guestName,
-                guestCountry: stay.guestCountry,
-                reservationCode: stay.reservationCode,
-                bookingDate: stay.createdAt,
-                roomName: stay.roomName ?? "",
-                roomTypeName: stay.roomTypeName,
-                packageName: stay.packageName,
-                guests: stay.adults + stay.children,
-                checkIn: stay.checkIn,
-                checkOut: stay.checkOut,
-                total: stay.money.total,
-                paid: stay.money.paid,
-              })
-            }
-            className="portal-item mt-4 inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-4 py-2 text-sm font-semibold text-sand-50 transition-colors hover:bg-white/20 cursor-pointer"
-          >
-            <FilePdf size={16} weight="duotone" />
-            Download booking confirmation
-          </button>
+          {stay.money.paid > 0 ? (
+            <button
+              onClick={() =>
+                downloadBookingConfirmation({
+                  guestName: stay.guestName,
+                  guestCountry: stay.guestCountry,
+                  reservationCode: stay.reservationCode,
+                  bookingDate: stay.createdAt,
+                  roomName: stay.roomName ?? "",
+                  roomTypeName: stay.roomTypeName,
+                  packageName: stay.packageName,
+                  guests: stay.adults + stay.children,
+                  checkIn: stay.checkIn,
+                  checkOut: stay.checkOut,
+                  total: stay.money.total,
+                  paid: stay.money.paid,
+                })
+              }
+              className="portal-item mt-4 inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-4 py-2 text-sm font-semibold text-sand-50 transition-colors hover:bg-white/20 cursor-pointer"
+            >
+              <FilePdf size={16} weight="duotone" />
+              Download booking confirmation
+            </button>
+          ) : (
+            <div className="portal-item group relative mt-4 inline-block" tabIndex={0}>
+              <button
+                disabled
+                aria-describedby="pdf-locked-tip"
+                className="inline-flex cursor-not-allowed items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-ocean-300"
+              >
+                <LockSimple size={15} weight="duotone" />
+                Download booking confirmation
+              </button>
+              <span
+                id="pdf-locked-tip"
+                role="tooltip"
+                className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2.5 w-64 -translate-x-1/2 rounded-xl bg-ink px-3.5 py-2.5 text-center text-xs font-medium leading-relaxed text-sand-50 opacity-0 shadow-lg transition-opacity duration-200 group-hover:opacity-100 group-focus-within:opacity-100"
+              >
+                Pay at least a deposit in the "Your bill" section below to unlock
+                your booking confirmation.
+                <span className="absolute left-1/2 top-full -mt-1 h-2.5 w-2.5 -translate-x-1/2 rotate-45 bg-ink" />
+              </span>
+            </div>
+          )}
         </div>
       </div>
 

@@ -6,6 +6,7 @@ import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
 import {
   CalendarBlank,
+  Tray,
   ChartLineUp,
   ClockCounterClockwise,
   GearSix,
@@ -23,6 +24,7 @@ const NAV = [
   { to: "/dashboard", label: "Dashboard", icon: SquaresFour, min: "crew" },
   { to: "/calendar", label: "Calendar", icon: CalendarBlank, min: "crew" },
   { to: "/guests", label: "Guests", icon: UsersThree, min: "crew" },
+  { to: "/requests", label: "Requests", icon: Tray, min: "crew" },
   { to: "/channels", label: "Channels", icon: Plugs, min: "manager" },
   { to: "/analytics", label: "Analytics", icon: ChartLineUp, min: "manager" },
   { to: "/settings", label: "Settings", icon: GearSix, min: "manager" },

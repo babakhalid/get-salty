@@ -18,6 +18,7 @@ import SettingsPage from "./pages/SettingsPage";
 import GuestPortalPage from "./pages/GuestPortalPage";
 import BookPage from "./pages/BookPage";
 import GuestsPage from "./pages/GuestsPage";
+import RequestsPage from "./pages/RequestsPage";
 import LandingPage from "./pages/LandingPage";
 
 function RequireRole({
@@ -61,6 +62,7 @@ export default function App() {
                   <Route path="/dashboard" element={<DashboardPage />} />
                   <Route path="/calendar" element={<CalendarPage />} />
                   <Route path="/guests" element={<GuestsPage />} />
+                  <Route path="/requests" element={<RequestsPage />} />
                   <Route
                     path="/channels"
                     element={

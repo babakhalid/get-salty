@@ -24,6 +24,7 @@ import type * as lib_access from "../lib/access.js";
 import type * as payments from "../payments.js";
 import type * as portal from "../portal.js";
 import type * as publicBooking from "../publicBooking.js";
+import type * as requests from "../requests.js";
 import type * as seed from "../seed.js";
 import type * as users from "../users.js";
 
@@ -50,6 +51,7 @@ declare const fullApi: ApiFromModules<{
   payments: typeof payments;
   portal: typeof portal;
   publicBooking: typeof publicBooking;
+  requests: typeof requests;
   seed: typeof seed;
   users: typeof users;
 }>;

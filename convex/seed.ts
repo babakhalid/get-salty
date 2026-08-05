@@ -718,7 +718,7 @@ export const seedDemoBookings = internalMutation({
     });
     const salma = await mkGuest({
       fullName: "Salma Idrissi", email: "salma.idrissi@gmail.com",
-      phone: "+212 662 48 17 romeo".replace(" romeo", "93"), country: "Morocco",
+      phone: "+212 662 48 17 93", country: "Morocco",
       surfLevel: "intermediate", allergies: "Vegetarian",
     });
     const tomas = await mkGuest({

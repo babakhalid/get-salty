@@ -127,9 +127,42 @@ function RoomsTab() {
   const beds = useQuery(api.inventory.listBeds);
   const upsertRoom = useMutation(api.inventory.upsertRoom);
   const upsertRoomType = useMutation(api.inventory.upsertRoomType);
+  const generateUploadUrl = useMutation(api.inventory.generateUploadUrl);
+  const setRoomPhoto = useMutation(api.inventory.setRoomPhoto);
   const [editing, setEditing] = useState<"new-room" | "new-type" | Id<"rooms"> | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   const editingRoom = rooms?.find((r) => r._id === editing);
+
+  async function handlePhotoUpload(file: File) {
+    if (!editingRoom) return;
+    setUploadError(null);
+    if (!file.type.startsWith("image/")) {
+      setUploadError("Please choose an image file.");
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      setUploadError("Image too large — keep it under 8 MB.");
+      return;
+    }
+    setUploading(true);
+    try {
+      const uploadUrl = await generateUploadUrl();
+      const response = await fetch(uploadUrl, {
+        method: "POST",
+        headers: { "Content-Type": file.type },
+        body: file,
+      });
+      if (!response.ok) throw new Error("Upload failed");
+      const { storageId } = await response.json();
+      await setRoomPhoto({ roomId: editingRoom._id, storageId });
+    } catch {
+      setUploadError("Upload failed — try again.");
+    } finally {
+      setUploading(false);
+    }
+  }
 
   return (
     <div>
@@ -152,6 +185,17 @@ function RoomsTab() {
               const bedCount = beds?.filter((b) => b.roomId === room._id).length ?? 0;
               return (
                 <li key={room._id} className="flex items-center gap-4 px-5 py-3.5">
+                  {room.photoUrl ? (
+                    <img
+                      src={room.photoUrl}
+                      alt=""
+                      className="h-10 w-14 shrink-0 rounded-lg object-cover"
+                    />
+                  ) : (
+                    <span className="flex h-10 w-14 shrink-0 items-center justify-center rounded-lg bg-sand-100 text-[10px] font-bold text-ink-faint">
+                      No photo
+                    </span>
+                  )}
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-semibold">{room.name}</p>
                     <p className="text-xs text-ink-faint">
@@ -251,7 +295,9 @@ function RoomsTab() {
                 type="number"
                 min={1}
                 defaultValue={
-                  editingRoom ? (beds?.filter((b) => b.roomId === editingRoom._id).length ?? "") : ""
+                  editingRoom
+                    ? beds?.filter((b) => b.roomId === editingRoom._id).length || ""
+                    : ""
                 }
               />
             </Field>
@@ -259,7 +305,43 @@ function RoomsTab() {
           <Field label="Guest-facing description">
             <Textarea name="description" defaultValue={editingRoom?.description} placeholder="Shown on the guest portal" />
           </Field>
-          <Field label="Photo URL" hint="e.g. /rooms/tide-room.jpg (files in public/rooms)">
+
+          {editingRoom && (
+            <div className="flex flex-col gap-2">
+              <span className="text-[13px] font-medium text-ink-soft">Room photo</span>
+              {editingRoom.photoUrl ? (
+                <img
+                  src={editingRoom.photoUrl}
+                  alt={editingRoom.name}
+                  className="h-36 w-full rounded-xl object-cover"
+                />
+              ) : (
+                <p className="rounded-xl bg-sand-100 px-4 py-6 text-center text-sm text-ink-faint">
+                  No photo yet
+                </p>
+              )}
+              <label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-sand-200 bg-white px-4 py-2 text-sm font-medium transition-colors hover:border-sand-300">
+                {uploading ? "Uploading…" : "Upload new photo"}
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  disabled={uploading}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) void handlePhotoUpload(file);
+                    e.target.value = "";
+                  }}
+                />
+              </label>
+              {uploadError && <span className="text-xs text-coral">{uploadError}</span>}
+              <span className="text-xs text-ink-faint">
+                JPG/PNG up to 8 MB. The new photo replaces the old one everywhere
+                (booking page + guest portal) instantly.
+              </span>
+            </div>
+          )}
+          <Field label="Photo URL (alternative)" hint="Used only when no photo is uploaded">
             <Input name="imageUrl" defaultValue={editingRoom?.imageUrl} placeholder="/rooms/…jpg or https://…" />
           </Field>
           <Button type="submit">{editingRoom ? "Save changes" : "Create room"}</Button>

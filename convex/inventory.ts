@@ -1,6 +1,19 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, type QueryCtx } from "./_generated/server";
+import type { Doc } from "./_generated/dataModel";
 import { logAudit, requireRole, requireUser } from "./lib/access";
+
+/** Uploaded photo wins over a static/imported URL. */
+export async function resolveRoomPhoto(
+  ctx: QueryCtx,
+  room: Doc<"rooms">,
+): Promise<string | undefined> {
+  if (room.imageStorageId) {
+    const url = await ctx.storage.getUrl(room.imageStorageId);
+    if (url) return url;
+  }
+  return room.imageUrl;
+}
 
 // ── Room types ─────────────────────────────────────────────────────────
 
@@ -56,7 +69,42 @@ export const listRooms = query({
   handler: async (ctx) => {
     await requireUser(ctx);
     const rooms = await ctx.db.query("rooms").collect();
-    return rooms.sort((a, b) => a.sortOrder - b.sortOrder);
+    const sorted = rooms.sort((a, b) => a.sortOrder - b.sortOrder);
+    return await Promise.all(
+      sorted.map(async (room) => ({
+        ...room,
+        photoUrl: await resolveRoomPhoto(ctx, room),
+      })),
+    );
+  },
+});
+
+/** Step 1 of a photo upload: the client POSTs the file to this URL. */
+export const generateUploadUrl = mutation({
+  args: {},
+  handler: async (ctx) => {
+    await requireRole(ctx, "manager");
+    return await ctx.storage.generateUploadUrl();
+  },
+});
+
+/** Step 2: attach the uploaded file to the room (replaces the old one). */
+export const setRoomPhoto = mutation({
+  args: { roomId: v.id("rooms"), storageId: v.id("_storage") },
+  handler: async (ctx, args) => {
+    const actor = await requireRole(ctx, "manager");
+    const room = await ctx.db.get(args.roomId);
+    if (!room) throw new Error("Room not found");
+    if (room.imageStorageId) {
+      await ctx.storage.delete(room.imageStorageId).catch(() => {});
+    }
+    await ctx.db.patch(args.roomId, { imageStorageId: args.storageId });
+    await logAudit(ctx, actor, {
+      action: "room.setPhoto",
+      entity: "rooms",
+      entityId: args.roomId,
+      summary: `Uploaded a new photo for room "${room.name}"`,
+    });
   },
 });
 

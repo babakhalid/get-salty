@@ -6,6 +6,7 @@ import {
   type QueryCtx,
 } from "./_generated/server";
 import { surfLevelValidator } from "./schema";
+import { resolveRoomPhoto } from "./inventory";
 
 /**
  * Guest portal — public, no auth. Every function is scoped strictly to the
@@ -63,7 +64,7 @@ export const stay = query({
       roomName: room?.name,
       roomTypeName: roomType?.name,
       roomDescription: room?.description,
-      roomImageUrl: room?.imageUrl,
+      roomImageUrl: room ? await resolveRoomPhoto(ctx, room) : undefined,
       adults: booking.adults,
       children: booking.children,
       money: {

@@ -85,6 +85,7 @@ export default defineSchema({
     notes: v.optional(v.string()),
     description: v.optional(v.string()), // guest-facing blurb
     imageUrl: v.optional(v.string()), // guest-facing photo (public path or URL)
+    imageStorageId: v.optional(v.id("_storage")), // uploaded photo (wins over imageUrl)
     sortOrder: v.number(),
   }).index("by_roomType", ["roomTypeId"]),
 

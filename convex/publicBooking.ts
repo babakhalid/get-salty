@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import { generatePortalToken, generateReservationCode } from "./lib/access";
+import { resolveRoomPhoto } from "./inventory";
 import { surfLevelValidator } from "./schema";
 
 /**
@@ -57,10 +58,10 @@ export const availability = query({
 
     // One card per actual room — guests pick the room they saw in the photos.
     const typeById = new Map(roomTypes.map((t) => [t._id, t]));
-    const roomCards = rooms
+    const roomCards = await Promise.all(rooms
       .filter((r) => r.status === "available")
       .sort((a, b) => a.sortOrder - b.sortOrder)
-      .map((room) => {
+      .map(async (room) => {
         const type = typeById.get(room.roomTypeId);
         let available: boolean;
         if (type?.mode === "dorm") {
@@ -76,7 +77,7 @@ export const availability = query({
           roomId: room._id,
           name: room.name,
           description: room.description,
-          imageUrl: room.imageUrl,
+          imageUrl: await resolveRoomPhoto(ctx, room),
           typeName: type?.name ?? "",
           mode: type?.mode ?? "private",
           capacity: type?.capacity ?? 2,
@@ -84,7 +85,7 @@ export const availability = query({
           totalForStay: (type?.basePrice ?? 0) * nights,
           available,
         };
-      });
+      }));
 
     return {
       nights,

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useAction } from "convex/react";
 import { useMutation, useQuery } from "convex/react";
 import { format } from "date-fns";
 import {
@@ -43,7 +44,10 @@ function ChannexCard() {
   const me = useQuery(api.users.me);
   const connect = useMutation(api.channex.connect);
   const syncNow = useMutation(api.channex.syncNow);
+  const getIframeUrl = useAction(api.channex.iframeUrl);
   const [busy, setBusy] = useState(false);
+  const [iframeUrl, setIframeUrl] = useState<string | null>(null);
+  const [loadingIframe, setLoadingIframe] = useState(false);
 
   if (status === undefined) return null;
   return (
@@ -78,17 +82,35 @@ function ChannexCard() {
         )}
       </div>
       {status.connected ? (
-        <Button
-          variant="secondary"
-          disabled={busy}
-          onClick={async () => {
-            setBusy(true);
-            try { await syncNow({}); } finally { setBusy(false); }
-          }}
-        >
-          <ArrowsClockwise size={16} weight="bold" className={busy ? "animate-spin" : ""} />
-          Push availability & rates
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          {(me?.role === "admin" || me?.role === "manager") && (
+            <Button
+              disabled={loadingIframe}
+              onClick={async () => {
+                setLoadingIframe(true);
+                try {
+                  setIframeUrl(await getIframeUrl({}));
+                } finally {
+                  setLoadingIframe(false);
+                }
+              }}
+            >
+              <Plugs size={16} weight="bold" />
+              {loadingIframe ? "Opening…" : "Manage channels & mapping"}
+            </Button>
+          )}
+          <Button
+            variant="secondary"
+            disabled={busy}
+            onClick={async () => {
+              setBusy(true);
+              try { await syncNow({}); } finally { setBusy(false); }
+            }}
+          >
+            <ArrowsClockwise size={16} weight="bold" className={busy ? "animate-spin" : ""} />
+            Push availability & rates
+          </Button>
+        </div>
       ) : me?.role === "admin" ? (
         <Button
           disabled={busy}
@@ -102,6 +124,32 @@ function ChannexCard() {
       ) : (
         <span className="text-xs text-ink-faint">Ask an admin to connect</span>
       )}
+      {iframeUrl && (
+        <ChannelManagerModal url={iframeUrl} onClose={() => setIframeUrl(null)} />
+      )}
+    </div>
+  );
+}
+
+function ChannelManagerModal({ url, onClose }: { url: string; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-6">
+      <div className="absolute inset-0 bg-ink/40" onClick={onClose} />
+      <div className="relative flex h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-xl2 bg-white shadow-2xl">
+        <div className="flex items-center justify-between border-b border-sand-200 px-5 py-3">
+          <div>
+            <p className="font-bold tracking-tight">Channels & room mapping</p>
+            <p className="text-xs text-ink-faint">
+              Connect Booking.com, Airbnb, Expedia… and map them to your rooms.
+              Changes sync automatically.
+            </p>
+          </div>
+          <Button variant="secondary" size="sm" onClick={onClose}>
+            <X size={14} weight="bold" /> Close
+          </Button>
+        </div>
+        <iframe src={url} title="Channel management" className="h-full w-full flex-1" />
+      </div>
     </div>
   );
 }

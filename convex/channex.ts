@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import {
+  action,
   internalAction,
   internalMutation,
   internalQuery,
@@ -552,6 +553,43 @@ export const connect = mutation({
       entity: "channexConfig",
       summary: "Started Channex connection setup",
     });
+  },
+});
+
+/** Caller's display name if they're manager+, for the iframe session. */
+export const callerName = internalQuery({
+  args: {},
+  handler: async (ctx) => {
+    const user = await requireRole(ctx, "manager");
+    return user.name ?? user.email ?? "PMS user";
+  },
+});
+
+/**
+ * One-time authenticated URL for Channex's embedded channel-management UI
+ * (connect OTAs + room mapping), white-labeled inside our Channels page.
+ */
+export const iframeUrl = action({
+  args: {},
+  handler: async (ctx): Promise<string> => {
+    const username = await ctx.runQuery(internal.channex.callerName, {});
+    const config = await ctx.runQuery(internal.channex.getConfig, {});
+    if (!config) throw new Error("Connect to Channex first");
+    const result = await channexFetch("/auth/one_time_token", "POST", {
+      one_time_token: {
+        property_id: config.propertyId,
+        username,
+      },
+    });
+    const base = (process.env.CHANNEX_BASE_URL ?? "").replace("/api/v1", "");
+    const params = new URLSearchParams({
+      oauth_session_key: result.data.token,
+      app_mode: "headless",
+      redirect_to: "/channels",
+      property_id: config.propertyId,
+      channels: "BDC,ABB,EXP,HWL,VRB,AGO,OC",
+    });
+    return `${base}/auth/exchange?${params.toString()}`;
   },
 });
 

@@ -446,19 +446,22 @@ export const ingestRevision = internalMutation({
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    // find-or-create the channel row for this OTA
+    // find-or-create the channel row for this OTA. A booking arriving does
+    // NOT mean the real OTA account is connected — on the sandbox everything
+    // stays "mock" (shown as "Sandbox"); we never overwrite an existing status.
+    const isSandbox = (process.env.CHANNEX_BASE_URL ?? "").includes("staging");
     const channels = await ctx.db.query("channels").collect();
     let channel = channels.find((c) => c.name === args.otaName);
     if (!channel) {
       const id = await ctx.db.insert("channels", {
         name: args.otaName,
         type: OTA_TYPE[args.otaName] ?? "other",
-        status: "connected",
+        status: isSandbox ? "mock" : "connected",
         lastSyncAt: Date.now(),
       });
       channel = (await ctx.db.get(id))!;
     } else {
-      await ctx.db.patch(channel._id, { lastSyncAt: Date.now(), status: "connected" });
+      await ctx.db.patch(channel._id, { lastSyncAt: Date.now() });
     }
 
     // resolve room type name for the inbox display

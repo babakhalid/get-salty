@@ -843,3 +843,21 @@ export const seedDemoBookings = internalMutation({
     return "Seeded 7 demo bookings with payments, activities, requests and expenses.";
   },
 });
+
+/** One-off: reset sandbox channel cards wrongly marked "connected" back to mock. */
+export const resetSandboxChannelStatus = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const isSandbox = (process.env.CHANNEX_BASE_URL ?? "").includes("staging");
+    if (!isSandbox) return "Not on sandbox — no change.";
+    const channels = await ctx.db.query("channels").collect();
+    let fixed = 0;
+    for (const channel of channels) {
+      if (channel.status === "connected") {
+        await ctx.db.patch(channel._id, { status: "mock" });
+        fixed++;
+      }
+    }
+    return `Reset ${fixed} channel(s) to sandbox status.`;
+  },
+});

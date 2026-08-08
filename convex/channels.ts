@@ -8,6 +8,7 @@ import {
   requireUser,
 } from "./lib/access";
 import { assertSlotFree } from "./bookings";
+import { internal } from "./_generated/api";
 
 /**
  * Mock Channex.io adapter.
@@ -24,6 +25,7 @@ const SOURCE_BY_TYPE = {
   airbnb: "airbnb",
   expedia: "expedia",
   hostelworld: "hostelworld",
+  other: "direct",
 } as const;
 
 export const list = query({
@@ -136,7 +138,13 @@ export const accept = mutation({
       const match = bookings.find(
         (b) => b.channelBookingId === p.ota_reservation_code,
       );
-      if (match) await ctx.db.patch(match._id, { status: "cancelled" });
+      if (match) {
+        await ctx.db.patch(match._id, { status: "cancelled" });
+        await ctx.scheduler.runAfter(0, internal.channex.pushAvailability, {
+          start: match.checkIn,
+          end: match.checkOut,
+        });
+      }
       await ctx.db.patch(args.requestId, {
         status: "accepted",
         resolvedBy: actor._id,
@@ -186,6 +194,10 @@ export const accept = mutation({
       status: "accepted",
       resolvedBy: actor._id,
       linkedBookingId: bookingId,
+    });
+    await ctx.scheduler.runAfter(0, internal.channex.pushAvailability, {
+      start: p.arrival_date,
+      end: p.departure_date,
     });
     await logAudit(ctx, actor, {
       action: "channel.accept",

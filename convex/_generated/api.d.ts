@@ -15,6 +15,8 @@ import type * as bookings from "../bookings.js";
 import type * as calendar from "../calendar.js";
 import type * as catalog from "../catalog.js";
 import type * as channels from "../channels.js";
+import type * as channex from "../channex.js";
+import type * as crons from "../crons.js";
 import type * as dashboard from "../dashboard.js";
 import type * as guestDirectory from "../guestDirectory.js";
 import type * as hermes from "../hermes.js";
@@ -42,6 +44,8 @@ declare const fullApi: ApiFromModules<{
   calendar: typeof calendar;
   catalog: typeof catalog;
   channels: typeof channels;
+  channex: typeof channex;
+  crons: typeof crons;
   dashboard: typeof dashboard;
   guestDirectory: typeof guestDirectory;
   hermes: typeof hermes;

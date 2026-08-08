@@ -3,6 +3,7 @@ import { mutation, query } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import { generatePortalToken, generateReservationCode } from "./lib/access";
 import { resolveRoomPhoto } from "./inventory";
+import { internal } from "./_generated/api";
 import { surfLevelValidator } from "./schema";
 
 /**
@@ -254,6 +255,10 @@ export const createRequest = mutation({
       }
     }
 
+    await ctx.scheduler.runAfter(0, internal.channex.pushAvailability, {
+      start: args.checkIn,
+      end: args.checkOut,
+    });
     await ctx.db.insert("auditLogs", {
       actorName: `Guest: ${fullName} (self-service)`,
       action: "booking.selfService",

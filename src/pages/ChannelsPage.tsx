@@ -38,6 +38,74 @@ const DEMO_GUESTS = [
   { name: "Ciara Whelan", email: "ciara.whelan@gmail.com", country: "Ireland" },
 ];
 
+function ChannexCard() {
+  const status = useQuery(api.channex.status);
+  const me = useQuery(api.users.me);
+  const connect = useMutation(api.channex.connect);
+  const syncNow = useMutation(api.channex.syncNow);
+  const [busy, setBusy] = useState(false);
+
+  if (status === undefined) return null;
+  return (
+    <div
+      className="mb-8 flex flex-wrap items-center gap-4 rounded-xl2 border border-sand-200 bg-white p-5"
+      style={{ boxShadow: "var(--shadow-diffuse)" }}
+    >
+      <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-ocean-900 text-sm font-black text-sand-50">
+        CX
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="flex items-center gap-2 font-bold">
+          Channex live sync
+          <Badge tone={status.connected ? (status.lastError ? "red" : "green") : "neutral"}>
+            {status.connected ? (status.lastError ? "sync error" : "connected") : "not connected"}
+          </Badge>
+        </p>
+        {status.connected ? (
+          <p className="mt-0.5 text-xs text-ink-faint">
+            Property <span className="num">{status.propertyId.slice(0, 8)}…</span> ·{" "}
+            {status.mappedRoomTypes} room types mapped
+            {status.lastSyncAt && ` · synced ${format(new Date(status.lastSyncAt), "d MMM HH:mm")}`}
+          </p>
+        ) : (
+          <p className="mt-0.5 text-xs text-ink-faint">
+            Creates the property, rooms and rates on Channex (staging) and starts
+            two-way sync: bookings in, availability out.
+          </p>
+        )}
+        {status.connected && status.lastError && (
+          <p className="mt-1 truncate text-xs text-coral">{status.lastError}</p>
+        )}
+      </div>
+      {status.connected ? (
+        <Button
+          variant="secondary"
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true);
+            try { await syncNow({}); } finally { setBusy(false); }
+          }}
+        >
+          <ArrowsClockwise size={16} weight="bold" className={busy ? "animate-spin" : ""} />
+          Push availability & rates
+        </Button>
+      ) : me?.role === "admin" ? (
+        <Button
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true);
+            try { await connect({}); } finally { setBusy(false); }
+          }}
+        >
+          <Plugs size={16} weight="bold" /> Connect to Channex
+        </Button>
+      ) : (
+        <span className="text-xs text-ink-faint">Ask an admin to connect</span>
+      )}
+    </div>
+  );
+}
+
 export default function ChannelsPage() {
   const channels = useQuery(api.channels.list);
   const requests = useQuery(api.channels.requests, {});
@@ -101,6 +169,8 @@ export default function ChannelsPage() {
           Simulate incoming booking
         </Button>
       </header>
+
+      <ChannexCard />
 
       {/* Channel cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">

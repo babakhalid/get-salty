@@ -219,6 +219,7 @@ export default defineSchema({
       v.literal("airbnb"),
       v.literal("expedia"),
       v.literal("hostelworld"),
+      v.literal("other"),
     ),
     status: v.union(
       v.literal("connected"),
@@ -261,6 +262,24 @@ export default defineSchema({
   })
     .index("by_status", ["status"])
     .index("by_channel", ["channelId"]),
+
+  // ── Channex.io live sync ─────────────────────────────────────────────
+  channexConfig: defineTable({
+    propertyId: v.string(), // Channex property UUID
+    webhookId: v.optional(v.string()),
+    webhookSecret: v.string(),
+    active: v.boolean(),
+    lastSyncAt: v.optional(v.number()),
+    lastError: v.optional(v.string()),
+  }),
+
+  channexRoomMap: defineTable({
+    roomTypeId: v.id("roomTypes"),
+    channexRoomTypeId: v.string(),
+    channexRatePlanId: v.string(),
+  })
+    .index("by_roomType", ["roomTypeId"])
+    .index("by_channexRoomType", ["channexRoomTypeId"]),
 
   // ── Money ────────────────────────────────────────────────────────────
   payments: defineTable({

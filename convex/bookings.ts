@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query, type MutationCtx } from "./_generated/server";
+import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import {
   generatePortalToken,
@@ -227,6 +228,10 @@ export const create = mutation({
       }
     }
 
+    await ctx.scheduler.runAfter(0, internal.channex.pushAvailability, {
+      start: args.checkIn,
+      end: args.checkOut,
+    });
     await logAudit(ctx, actor, {
       action: "booking.create",
       entity: "bookings",
@@ -267,6 +272,10 @@ export const update = mutation({
       bookingId,
     );
     await ctx.db.patch(bookingId, patch);
+    await ctx.scheduler.runAfter(0, internal.channex.pushAvailability, {
+      start: before.checkIn < next.checkIn ? before.checkIn : next.checkIn,
+      end: before.checkOut > next.checkOut ? before.checkOut : next.checkOut,
+    });
     const guest = await ctx.db.get(before.guestId);
     await logAudit(ctx, actor, {
       action: "booking.update",
@@ -286,6 +295,10 @@ export const setStatus = mutation({
     const booking = await ctx.db.get(args.bookingId);
     if (!booking) throw new Error("Booking not found");
     await ctx.db.patch(args.bookingId, { status: args.status });
+    await ctx.scheduler.runAfter(0, internal.channex.pushAvailability, {
+      start: booking.checkIn,
+      end: booking.checkOut,
+    });
     const guest = await ctx.db.get(booking.guestId);
     await logAudit(ctx, actor, {
       action: `booking.${args.status}`,
@@ -527,6 +540,10 @@ export const remove = mutation({
       for (const row of rows) await ctx.db.delete(row._id);
     }
     await ctx.db.delete(args.bookingId);
+    await ctx.scheduler.runAfter(0, internal.channex.pushAvailability, {
+      start: booking.checkIn,
+      end: booking.checkOut,
+    });
     await logAudit(ctx, actor, {
       action: "booking.delete",
       entity: "bookings",

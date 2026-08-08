@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { mutation, query, type QueryCtx } from "./_generated/server";
 import type { Doc } from "./_generated/dataModel";
 import { logAudit, requireRole, requireUser } from "./lib/access";
+import { internal } from "./_generated/api";
 
 /** Uploaded photo wins over a static/imported URL. */
 export async function resolveRoomPhoto(
@@ -40,6 +41,10 @@ export const upsertRoomType = mutation({
     if (id) {
       const before = await ctx.db.get(id);
       await ctx.db.patch(id, fields);
+      if (before && before.basePrice !== fields.basePrice) {
+        // price changed → sync new rates to the channels
+        await ctx.scheduler.runAfter(0, internal.channex.pushRates, {});
+      }
       await logAudit(ctx, actor, {
         action: "roomType.update",
         entity: "roomTypes",

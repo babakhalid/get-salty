@@ -12,4 +12,11 @@ crons.daily(
   {},
 );
 
+crons.daily(
+  "channex rates sync",
+  { hourUTC: 3, minuteUTC: 30 },
+  internal.channex.pushRates,
+  {},
+);
+
 export default crons;

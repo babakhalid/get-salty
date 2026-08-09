@@ -186,6 +186,16 @@ export default function BookingDetailDrawer({
               <p className="text-xs text-ink-faint">Allergies / diet</p>
               <p className="mt-0.5 font-semibold">{detail.guest?.allergies ?? "None"}</p>
             </div>
+            {booking.companions && booking.companions.length > 0 && (
+              <div className="col-span-2 md:col-span-4">
+                <p className="text-xs text-ink-faint">Travelling with</p>
+                <p className="mt-0.5 font-semibold">
+                  {booking.companions
+                    .map((c) => c.name + (c.surfLevel ? ` (${c.surfLevel})` : ""))
+                    .join(" · ")}
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Money */}

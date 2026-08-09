@@ -159,6 +159,10 @@ export default defineSchema({
     totalAmount: v.number(),
     currency: v.string(),
     notes: v.optional(v.string()),
+    // Fellow travellers (lead guest lives in `guests`)
+    companions: v.optional(
+      v.array(v.object({ name: v.string(), surfLevel: v.optional(v.string()) })),
+    ),
     createdBy: v.optional(v.id("users")),
     portalToken: v.string(),
     // Short human-friendly code (e.g. TSH-4F7K2) — guests quote it on the

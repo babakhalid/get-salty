@@ -112,6 +112,47 @@ export const availability = query({
   },
 });
 
+/** Per-date count of free rooms — powers the strike-through date picker. */
+export const calendarAvailability = query({
+  args: { start: v.string(), end: v.string() },
+  handler: async (ctx, args) => {
+    if (nightsBetween(args.start, args.end) > 120) throw new Error("Range too large");
+    const [rooms, beds, bookings] = await Promise.all([
+      ctx.db.query("rooms").collect(),
+      ctx.db.query("beds").collect(),
+      ctx.db.query("bookings").collect(),
+    ]);
+    const active = rooms.filter((r) => r.status === "available");
+    const holding = bookings.filter(
+      (b) =>
+        (HOLDING_STATUSES as readonly string[]).includes(b.status) &&
+        b.checkIn < args.end &&
+        b.checkOut > args.start,
+    );
+    const perDate: Record<string, number> = {};
+    let t = Date.parse(args.start);
+    const endT = Date.parse(args.end);
+    while (t < endT) {
+      const date = new Date(t).toISOString().slice(0, 10);
+      let free = 0;
+      for (const room of active) {
+        const roomBookings = holding.filter(
+          (b) => b.roomId === room._id && b.checkIn <= date && b.checkOut > date,
+        );
+        const roomBeds = beds.filter((b) => b.roomId === room._id);
+        if (roomBeds.length > 0) {
+          if (roomBookings.length < roomBeds.length) free++;
+        } else if (roomBookings.length === 0) {
+          free++;
+        }
+      }
+      perDate[date] = free;
+      t += 86400000;
+    }
+    return perDate;
+  },
+});
+
 export const createRequest = mutation({
   args: {
     checkIn: v.string(),
@@ -130,6 +171,9 @@ export const createRequest = mutation({
     surfLevel: v.optional(surfLevelValidator),
     allergies: v.optional(v.string()),
     notes: v.optional(v.string()),
+    companions: v.optional(
+      v.array(v.object({ name: v.string(), surfLevel: v.optional(v.string()) })),
+    ),
   },
   handler: async (ctx, args) => {
     const nights = validateStay(args.checkIn, args.checkOut);
@@ -218,6 +262,7 @@ export const createRequest = mutation({
       totalAmount,
       currency: "EUR",
       notes: args.notes ? `[Self-service] ${args.notes}` : "[Self-service booking]",
+      companions: args.companions,
       portalToken,
       reservationCode,
     });

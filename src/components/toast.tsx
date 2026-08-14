@@ -12,11 +12,19 @@ export function toast(kind: "success" | "error", message: string) {
   pushToast?.({ kind, message });
 }
 
-/** Strip Convex error wrapping so the guest-facing message reads clean. */
+/**
+ * Extract the human sentence out of a Convex error (multi-line, wrapped in
+ * request IDs and stack frames). Anything unrecognisable becomes the fallback
+ * so users never see technical noise.
+ */
 export function errorMessage(err: unknown, fallback: string) {
-  return err instanceof Error
-    ? err.message.replace(/^.*Uncaught Error:\s*/, "").replace(/ at .*$/s, "")
-    : fallback;
+  if (!(err instanceof Error)) return fallback;
+  const match = err.message.match(
+    /Uncaught \w*Error:\s*([\s\S]*?)(?:\s*\n\s*at\s|$)/,
+  );
+  const clean = match?.[1]?.trim();
+  if (clean && !/Server Error|Request ID/i.test(clean)) return clean;
+  return fallback;
 }
 
 export function Toaster() {

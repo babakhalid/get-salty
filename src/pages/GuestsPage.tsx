@@ -12,6 +12,7 @@ import {
   UsersThree,
 } from "@phosphor-icons/react";
 import { api } from "../../convex/_generated/api";
+import { errorMessage } from "../components/toast";
 import type { Id } from "../../convex/_generated/dataModel";
 import {
   Badge,
@@ -592,11 +593,7 @@ function GuestProfileDrawer({
                                   });
                                   setEditingStay(null);
                                 } catch (err) {
-                                  setStayError(
-                                    err instanceof Error
-                                      ? err.message.replace(/^.*Uncaught Error:\s*/, "").replace(/ at .*$/s, "")
-                                      : "Could not save the stay.",
-                                  );
+                                  setStayError(errorMessage(err, "Could not save the stay."));
                                 }
                               }}
                             >

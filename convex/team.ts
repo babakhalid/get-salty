@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { internalMutation, mutation, query } from "./_generated/server";
 import { logAudit, requireRole } from "./lib/access";
 
 /** Team roster with monthly salaries — feeds payroll into the expense ledger. */
@@ -91,12 +91,14 @@ export const recordPayroll = mutation({
     // One expense line per person, so exports show exactly who was paid what.
     let firstId = null;
     for (const member of members) {
+      const today = new Date().toISOString().slice(0, 10);
       const id = await ctx.db.insert("expenses", {
         category: "salary",
         kind: "fixed",
         amount: Math.round(member.salary * 100) / 100,
         currency: "EUR",
-        date: `${args.month}-28`,
+        // Booked today if we're inside that month, else on the month's 28th
+        date: today.startsWith(args.month) ? today : `${args.month}-28`,
         description: `${marker} ${member.name} — ${member.position}`,
         recordedBy: actor._id,
       });
@@ -119,12 +121,15 @@ export const payrollHistory = query({
   handler: async (ctx, args) => {
     await requireRole(ctx, "manager");
     const expenses = await ctx.db.query("expenses").collect();
-    const lines = expenses.filter(
-      (e) =>
-        e.date >= args.start &&
-        e.date <= args.end &&
-        e.description.startsWith("[Payroll "),
-    );
+    // Match by payroll MONTH (from the marker), not the expense date — a
+    // payroll booked mid-month must show for any range touching that month.
+    const startMonth = args.start.slice(0, 7);
+    const endMonth = args.end.slice(0, 7);
+    const lines = expenses.filter((e) => {
+      if (!e.description.startsWith("[Payroll ")) return false;
+      const month = e.description.slice("[Payroll ".length, "[Payroll ".length + 7);
+      return month >= startMonth && month <= endMonth;
+    });
     const byMonth = new Map<string, { total: number; members: number }>();
     for (const line of lines) {
       const month = line.description.slice("[Payroll ".length, "[Payroll ".length + 7);
@@ -140,5 +145,23 @@ export const payrollHistory = query({
         members: data.members,
       }))
       .sort((a, b) => b.month.localeCompare(a.month));
+  },
+});
+
+
+/** One-off fix: payroll lines dated in the future (old 28th rule) → today. */
+export const fixPayrollDates = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const today = new Date().toISOString().slice(0, 10);
+    const expenses = await ctx.db.query("expenses").collect();
+    let n = 0;
+    for (const e of expenses) {
+      if (e.description.startsWith("[Payroll ") && e.date > today) {
+        await ctx.db.patch(e._id, { date: today });
+        n++;
+      }
+    }
+    return `Re-dated ${n} payroll line(s) to ${today}.`;
   },
 });

@@ -5,6 +5,7 @@ import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
 import { CaretLeft, CaretRight } from "@phosphor-icons/react";
 import { api } from "../../convex/_generated/api";
+import { errorMessage } from "../components/toast";
 import type { Id } from "../../convex/_generated/dataModel";
 import { Button, cx } from "../components/ui";
 import NewBookingDrawer from "../components/calendar/NewBookingDrawer";
@@ -209,11 +210,7 @@ export default function CalendarPage() {
       try {
         await moveBooking({ bookingId: d.bookingId, roomId, bedId, checkIn, checkOut });
       } catch (err) {
-        setMoveError(
-          err instanceof Error
-            ? err.message.replace(/^.*Uncaught Error:\s*/, "").replace(/ at .*$/s, "")
-            : "Could not move the booking.",
-        );
+        setMoveError(errorMessage(err, "Could not move the booking."));
         setTimeout(() => setMoveError(null), 5000);
       }
     };

@@ -110,6 +110,7 @@ export default defineSchema({
     color: v.string(),
     active: v.boolean(),
     startTime: v.optional(v.string()), // daily fixed time, "HH:MM" 24h
+    imageUrl: v.optional(v.string()),
   }),
 
   services: defineTable({
@@ -122,15 +123,26 @@ export default defineSchema({
     ),
     active: v.boolean(),
     startTime: v.optional(v.string()), // e.g. breakfast at 09:00
+    imageUrl: v.optional(v.string()),
   }),
 
   packages: defineTable({
     name: v.string(),
     description: v.optional(v.string()),
+    // Flat price for classic packages; for formules with roomTypePrices
+    // this is the "from" price (lowest per-person weekly rate) for display.
     price: v.number(),
     nights: v.number(),
     includedItems: v.array(packageItemValidator),
     active: v.boolean(),
+    imageUrl: v.optional(v.string()),
+    imageStorageId: v.optional(v.id("_storage")),
+    // BookingLayer-style formule: per-person price PER WEEK by room type,
+    // prorated per night. Only listed room types can be booked with it.
+    roomTypePrices: v.optional(
+      v.array(v.object({ roomTypeId: v.id("roomTypes"), price: v.number() })),
+    ),
+    minGuests: v.optional(v.number()),
   }),
 
   // ── Guests & bookings ────────────────────────────────────────────────

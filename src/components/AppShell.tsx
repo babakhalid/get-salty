@@ -16,6 +16,7 @@ import {
   SquaresFour,
   UsersThree,
   X,
+  Wallet,
 } from "@phosphor-icons/react";
 import { api } from "../../convex/_generated/api";
 import { cx } from "./ui";
@@ -27,6 +28,7 @@ const NAV = [
   { to: "/requests", label: "Requests", icon: Tray, min: "crew" },
   { to: "/channels", label: "Channels", icon: Plugs, min: "manager" },
   { to: "/analytics", label: "Analytics", icon: ChartLineUp, min: "manager" },
+  { to: "/team", label: "Team & expenses", icon: Wallet, min: "manager" },
   { to: "/settings", label: "Settings", icon: GearSix, min: "manager" },
   { to: "/logs", label: "Logs", icon: ClockCounterClockwise, min: "manager" },
 ] as const;

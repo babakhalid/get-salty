@@ -131,9 +131,12 @@ export const report = query({
       (s, p) => s + (p.direction === "in" ? p.amount : -p.amount),
       0,
     );
-    const totalExpenses = expenses
-      .filter((e) => e.date >= start && e.date <= end)
+    const expensesInRange = expenses.filter((e) => e.date >= start && e.date <= end);
+    const totalExpenses = expensesInRange.reduce((s, e) => s + e.amount, 0);
+    const fixedExpenses = expensesInRange
+      .filter((e) => e.kind === "fixed")
       .reduce((s, e) => s + e.amount, 0);
+    const variableExpenses = totalExpenses - fixedExpenses;
 
     const rangeStartMs = Date.parse(start);
     const rangeEndMs = Date.parse(end) + 86400000;
@@ -151,6 +154,8 @@ export const report = query({
       totalNights,
       totalRevenue: Math.round(totalRevenue * 100) / 100,
       totalExpenses: Math.round(totalExpenses * 100) / 100,
+      fixedExpenses: Math.round(fixedExpenses * 100) / 100,
+      variableExpenses: Math.round(variableExpenses * 100) / 100,
       activityPopularity: Object.values(activityPopularity).sort(
         (a, b) => b.participants - a.participants,
       ),
@@ -202,6 +207,8 @@ export const exportData = query({
         return {
           date: p.date,
           guest: booking ? (guestById.get(booking.guestId)?.fullName ?? "") : "",
+          reservation: booking?.reservationCode ?? "",
+          room: booking ? (roomById.get(booking.roomId)?.name ?? "") : "",
           amount: p.direction === "in" ? p.amount : -p.amount,
           method: p.method,
           currency: p.currency,
@@ -214,6 +221,7 @@ export const exportData = query({
       .map((e) => ({
         date: e.date,
         category: e.category,
+        kind: e.kind ?? "variable",
         description: e.description,
         amount: e.amount,
         currency: e.currency,

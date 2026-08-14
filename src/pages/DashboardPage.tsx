@@ -167,13 +167,23 @@ export default function DashboardPage() {
 
   return (
     <div>
-      <header className="mb-8">
-        <h1 className="text-2xl font-black tracking-tight">Morning briefing</h1>
-        <p className="mt-1 text-sm text-ink-faint">{prettyDateLong(today)}</p>
+      <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-black tracking-tight">Morning briefing</h1>
+          <p className="mt-1 text-sm text-ink-faint">{prettyDateLong(today)}</p>
+        </div>
+        <RangePicker
+          start={rangeStart}
+          end={rangeEnd}
+          onChange={(s, e) => {
+            setRangeStart(s);
+            setRangeEnd(e);
+          }}
+        />
       </header>
 
-      {/* Stat row — asymmetric: revenue card gets the accent */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      {/* One flat stat row — today on the left, the picked period on the right */}
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">
         <StatCard
           label="Occupancy tonight"
           value={data?.occupancy ?? 0}
@@ -186,63 +196,28 @@ export default function DashboardPage() {
           icon={<UsersThree size={20} weight="duotone" />}
         />
         <StatCard
-          label="Arrivals today"
-          value={data?.arrivals.length ?? 0}
-          icon={<Tray size={20} weight="duotone" />}
-        />
-        <StatCard
           label="Pending requests"
           value={(data?.pendingChannelRequests ?? 0) + (data?.pendingGuestRequests ?? 0)}
           icon={<Tray size={20} weight="duotone" />}
+        />
+        <StatCard
+          label="Total guests"
+          value={period?.totalGuests ?? 0}
+          icon={<UsersThree size={20} weight="duotone" />}
+        />
+        <StatCard
+          label="Bookings — period"
+          value={period?.bookings ?? 0}
+          icon={<Bed size={20} weight="duotone" />}
+        />
+        <StatCard
+          label="Revenue — period"
+          value={period?.revenue ?? 0}
+          icon={<CurrencyEur size={20} weight="duotone" />}
           accent
+          isCurrency
         />
       </div>
-
-      {/* Period stats — pick any range */}
-      <section className="mt-10">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-sm font-bold uppercase tracking-wide text-ink-faint">
-            Over a period
-          </h2>
-          <RangePicker
-            start={rangeStart}
-            end={rangeEnd}
-            onChange={(s, e) => {
-              setRangeStart(s);
-              setRangeEnd(e);
-            }}
-          />
-        </div>
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
-          <StatCard
-            label="Total guests (all time)"
-            value={period?.totalGuests ?? 0}
-            icon={<UsersThree size={20} weight="duotone" />}
-          />
-          <StatCard
-            label="New guests"
-            value={period?.newGuests ?? 0}
-            icon={<UsersThree size={20} weight="duotone" />}
-          />
-          <StatCard
-            label="Bookings"
-            value={period?.bookings ?? 0}
-            icon={<Bed size={20} weight="duotone" />}
-          />
-          <StatCard
-            label="Nights"
-            value={period?.nights ?? 0}
-            icon={<Bed size={20} weight="duotone" />}
-          />
-          <StatCard
-            label="Revenue"
-            value={period?.revenue ?? 0}
-            icon={<CurrencyEur size={20} weight="duotone" />}
-            accent
-            isCurrency
-          />
-        </div>
-      </section>
 
       {/* Asymmetric 2fr/1fr layout */}
       <div className="mt-10 grid grid-cols-1 gap-x-8 gap-y-10 lg:grid-cols-[2fr_1fr]">

@@ -35,19 +35,27 @@ const PAGE_SIZE = 10;
 export default function GuestsPage() {
   const [search, setSearchRaw] = useState("");
   const [page, setPage] = useState(0);
+  const [tab, setTab] = useState<"current" | "archive">("current");
   const [openGuestId, setOpenGuestId] = useState<Id<"guests"> | null>(null);
-  const guests = useQuery(api.guestDirectory.list, { search: search || undefined });
+  const today = new Date().toISOString().slice(0, 10);
+  const guests = useQuery(api.guestDirectory.list, { search: search || undefined, today });
 
   const setSearch = (value: string) => {
     setSearchRaw(value);
     setPage(0);
   };
 
-  const pageCount = guests ? Math.max(1, Math.ceil(guests.length / PAGE_SIZE)) : 1;
+  const filtered = useMemo(
+    () => guests?.filter((g) => (tab === "current" ? g.current : !g.current)),
+    [guests, tab],
+  );
+  const currentCount = guests?.filter((g) => g.current).length ?? 0;
+  const archiveCount = guests ? guests.length - currentCount : 0;
+  const pageCount = filtered ? Math.max(1, Math.ceil(filtered.length / PAGE_SIZE)) : 1;
   const safePage = Math.min(page, pageCount - 1);
   const pageRows = useMemo(
-    () => guests?.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE),
-    [guests, safePage],
+    () => filtered?.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE),
+    [filtered, safePage],
   );
 
   return (
@@ -73,6 +81,37 @@ export default function GuestsPage() {
         </div>
       </header>
 
+      <div className="mb-4 inline-flex rounded-xl border border-sand-200 bg-white p-1">
+        {(
+          [
+            { key: "current", label: "Current & upcoming", count: currentCount },
+            { key: "archive", label: "Archive", count: archiveCount },
+          ] as const
+        ).map((t) => (
+          <button
+            key={t.key}
+            onClick={() => {
+              setTab(t.key);
+              setPage(0);
+            }}
+            className={cx(
+              "flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-bold transition-colors cursor-pointer",
+              tab === t.key ? "bg-ocean-700 text-sand-50" : "text-ink-soft hover:bg-sand-100",
+            )}
+          >
+            {t.label}
+            <span
+              className={cx(
+                "num rounded-full px-2 py-0.5 text-[11px]",
+                tab === t.key ? "bg-white/20" : "bg-sand-100 text-ink-faint",
+              )}
+            >
+              {t.count}
+            </span>
+          </button>
+        ))}
+      </div>
+
       <div
         className="overflow-hidden rounded-xl2 border border-sand-200 bg-white"
         style={{ boxShadow: "var(--shadow-diffuse)" }}
@@ -81,14 +120,22 @@ export default function GuestsPage() {
           <div className="p-4">
             <SkeletonRows count={6} />
           </div>
-        ) : guests.length === 0 ? (
+        ) : (filtered?.length ?? 0) === 0 ? (
           <EmptyState
             icon={<UsersThree size={22} weight="duotone" />}
-            title={search ? "No guests match" : "No guests yet"}
+            title={
+              search
+                ? "No guests match"
+                : tab === "current"
+                  ? "No current or upcoming guests"
+                  : "No archived guests yet"
+            }
             hint={
               search
                 ? "Try another name, email or country."
-                : "Guests appear here as soon as bookings come in."
+                : tab === "current"
+                  ? "Guests appear here while they're in house or have an upcoming stay."
+                  : "Past guests land here after checkout."
             }
           />
         ) : (
@@ -163,11 +210,11 @@ export default function GuestsPage() {
         )}
 
         {/* Pagination */}
-        {guests && guests.length > PAGE_SIZE && (
+        {filtered && filtered.length > PAGE_SIZE && (
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-sand-200 px-5 py-3">
             <p className="num text-xs text-ink-faint">
-              {safePage * PAGE_SIZE + 1}–{Math.min((safePage + 1) * PAGE_SIZE, guests.length)} of{" "}
-              {guests.length} guests
+              {safePage * PAGE_SIZE + 1}–{Math.min((safePage + 1) * PAGE_SIZE, filtered.length)} of{" "}
+              {filtered.length} guests
             </p>
             <div className="flex items-center gap-1">
               <button
@@ -225,6 +272,7 @@ function GuestProfileDrawer({
   const [editing, setEditing] = useState(false);
   const [openBookingId, setOpenBookingId] = useState<Id<"bookings"> | null>(null);
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
+  const [expandedStay, setExpandedStay] = useState<string | null>(null);
 
   if (!guestId) return null;
   const guest = profile?.guest;
@@ -407,7 +455,127 @@ function GuestProfileDrawer({
                           )}
                         </span>
                       </div>
+                      {expandedStay === stay.bookingId && (
+                        <div className="mt-3 flex flex-col gap-4 border-t border-sand-100 pt-3 text-sm">
+                          <div className="grid grid-cols-2 gap-x-6 gap-y-2.5 sm:grid-cols-3">
+                            <div>
+                              <p className="text-xs text-ink-faint">Reservation</p>
+                              <p className="num mt-0.5 font-bold tracking-wide">
+                                {stay.reservationCode ?? "—"}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-ink-faint">Package</p>
+                              <p className="mt-0.5 font-semibold">{stay.packageName ?? "Room only"}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-ink-faint">Guests</p>
+                              <p className="num mt-0.5 font-semibold">
+                                {stay.adults} adult{stay.adults === 1 ? "" : "s"}
+                                {stay.children > 0 ? ` · ${stay.children} child${stay.children === 1 ? "" : "ren"}` : ""}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-ink-faint">Duration</p>
+                              <p className="num mt-0.5 font-semibold">{stay.nights} nights</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-ink-faint">Paid</p>
+                              <p className="num mt-0.5 font-semibold">{eur(stay.paid)}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-ink-faint">Balance</p>
+                              <p className={cx("num mt-0.5 font-semibold", stay.balance > 0.005 && "text-coral")}>
+                                {stay.balance > 0.005 ? eur(stay.balance) : "Settled"}
+                              </p>
+                            </div>
+                          </div>
+
+                          {stay.companions.length > 0 && (
+                            <div>
+                              <p className="mb-1.5 text-xs text-ink-faint">Travelling with</p>
+                              <div className="flex flex-wrap gap-1.5">
+                                {stay.companions.map((c, i) => (
+                                  <span key={i} className="rounded-full bg-sand-100 px-2.5 py-0.5 text-xs font-semibold">
+                                    {c.name}
+                                    {c.surfLevel ? ` · ${c.surfLevel}` : ""}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {stay.payments.length > 0 && (
+                            <div>
+                              <p className="mb-1.5 text-xs text-ink-faint">Payments</p>
+                              <ul className="divide-y divide-sand-100 rounded-xl border border-sand-200">
+                                {stay.payments.map((pay, i) => (
+                                  <li key={i} className="flex items-center justify-between gap-3 px-3.5 py-2">
+                                    <span className="num text-xs text-ink-faint">{prettyDate(pay.date)}</span>
+                                    <span className="flex-1 text-xs capitalize text-ink-soft">
+                                      {pay.method.replace("_", " ")}
+                                      {pay.note ? ` — ${pay.note}` : ""}
+                                    </span>
+                                    <span className={cx("num text-sm font-bold", pay.direction === "refund" && "text-coral")}>
+                                      {pay.direction === "refund" ? "−" : ""}{eur(pay.amount)}
+                                    </span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+
+                          {stay.extras.length > 0 && (
+                            <div>
+                              <p className="mb-1.5 text-xs text-ink-faint">Extras</p>
+                              <ul className="flex flex-col gap-1">
+                                {stay.extras.map((line, i) => (
+                                  <li key={i} className="flex justify-between text-sm">
+                                    <span>
+                                      {line.name}
+                                      <span className="num text-xs text-ink-faint"> ×{line.qty}</span>
+                                    </span>
+                                    <span className="num font-semibold">{line.amount > 0 ? eur(line.amount) : "Included"}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+
+                          {stay.activities.length > 0 && (
+                            <div>
+                              <p className="mb-1.5 text-xs text-ink-faint">Activities</p>
+                              <ul className="flex flex-col gap-1">
+                                {stay.activities.map((line, i) => (
+                                  <li key={i} className="flex justify-between text-sm">
+                                    <span>{line.name}</span>
+                                    <span className="num text-xs text-ink-faint">
+                                      {prettyDate(line.date)} · {line.participants} pax
+                                    </span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+
+                          {stay.notes && (
+                            <div>
+                              <p className="text-xs text-ink-faint">Booking notes</p>
+                              <p className="mt-0.5 text-ink-soft">{stay.notes}</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
                       <div className="mt-2 flex items-center gap-4">
+                        <button
+                          onClick={() =>
+                            setExpandedStay(expandedStay === stay.bookingId ? null : stay.bookingId)
+                          }
+                          className="flex items-center gap-1 text-xs font-semibold text-ocean-700 transition-colors hover:underline cursor-pointer"
+                        >
+                          {expandedStay === stay.bookingId ? "Hide details" : "Full details"}
+                        </button>
                         <button
                           onClick={async () => {
                             await navigator.clipboard.writeText(

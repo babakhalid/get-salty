@@ -256,7 +256,7 @@ export const update = mutation({
     notes: v.optional(v.string()),
   },
   handler: async (ctx, { bookingId, ...patch }) => {
-    const actor = await requireUser(ctx);
+    const actor = await requireRole(ctx, "manager");
     const before = await ctx.db.get(bookingId);
     if (!before) throw new Error("Booking not found");
     const next = { ...before, ...patch };
@@ -532,7 +532,12 @@ export const remove = mutation({
     const booking = await ctx.db.get(args.bookingId);
     if (!booking) return;
     const guest = await ctx.db.get(booking.guestId);
-    for (const table of ["bookingActivities", "bookingServices"] as const) {
+    for (const table of [
+      "bookingActivities",
+      "bookingServices",
+      "payments",
+      "guestRequests",
+    ] as const) {
       const rows = await ctx.db
         .query(table)
         .withIndex("by_booking", (q) => q.eq("bookingId", args.bookingId))
@@ -550,6 +555,49 @@ export const remove = mutation({
       entityId: args.bookingId,
       summary: `Deleted booking for ${guest?.fullName}`,
       before: booking,
+    });
+  },
+});
+
+
+/** Delete a guest and every trace of their stays. Manager+ only. */
+export const removeGuest = mutation({
+  args: { guestId: v.id("guests") },
+  handler: async (ctx, args) => {
+    const actor = await requireRole(ctx, "manager");
+    const guest = await ctx.db.get(args.guestId);
+    if (!guest) return;
+    const bookings = await ctx.db
+      .query("bookings")
+      .withIndex("by_guest", (q) => q.eq("guestId", args.guestId))
+      .collect();
+    for (const booking of bookings) {
+      for (const table of [
+        "bookingActivities",
+        "bookingServices",
+        "payments",
+        "guestRequests",
+      ] as const) {
+        const rows = await ctx.db
+          .query(table)
+          .withIndex("by_booking", (q) => q.eq("bookingId", booking._id))
+          .collect();
+        for (const row of rows) await ctx.db.delete(row._id);
+      }
+      await ctx.db.delete(booking._id);
+    }
+    await ctx.db.delete(args.guestId);
+    if (bookings.length > 0) {
+      const start = bookings.reduce((a, b) => (b.checkIn < a ? b.checkIn : a), bookings[0].checkIn);
+      const end = bookings.reduce((a, b) => (b.checkOut > a ? b.checkOut : a), bookings[0].checkOut);
+      await ctx.scheduler.runAfter(0, internal.channex.pushAvailability, { start, end });
+    }
+    await logAudit(ctx, actor, {
+      action: "guest.delete",
+      entity: "guests",
+      entityId: args.guestId,
+      summary: `Deleted guest ${guest.fullName} (${bookings.length} bookings and their payments/requests)`,
+      before: guest,
     });
   },
 });

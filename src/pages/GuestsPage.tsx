@@ -269,10 +269,19 @@ function GuestProfileDrawer({
     guestId ? { guestId } : "skip",
   );
   const updateGuest = useMutation(api.bookings.updateGuest);
+  const updateBooking = useMutation(api.bookings.update);
+  const removeBooking = useMutation(api.bookings.remove);
+  const removeGuest = useMutation(api.bookings.removeGuest);
+  const me = useQuery(api.users.me);
+  const rooms = useQuery(api.inventory.listRooms);
+  const canManage = me?.role === "admin" || me?.role === "manager";
   const [editing, setEditing] = useState(false);
   const [openBookingId, setOpenBookingId] = useState<Id<"bookings"> | null>(null);
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
   const [expandedStay, setExpandedStay] = useState<string | null>(null);
+  const [editingStay, setEditingStay] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [stayError, setStayError] = useState<string | null>(null);
 
   if (!guestId) return null;
   const guest = profile?.guest;
@@ -564,6 +573,71 @@ function GuestProfileDrawer({
                               <p className="mt-0.5 text-ink-soft">{stay.notes}</p>
                             </div>
                           )}
+
+                          {canManage && editingStay === stay.bookingId && (
+                            <form
+                              className="flex flex-col gap-3 rounded-xl border border-sand-200 bg-sand-50 p-4"
+                              onSubmit={async (e) => {
+                                e.preventDefault();
+                                setStayError(null);
+                                const form = new FormData(e.currentTarget);
+                                try {
+                                  await updateBooking({
+                                    bookingId: stay.bookingId,
+                                    checkIn: String(form.get("checkIn")),
+                                    checkOut: String(form.get("checkOut")),
+                                    roomId: form.get("roomId") as Id<"rooms">,
+                                    adults: Number(form.get("adults")),
+                                    children: Number(form.get("children")),
+                                    totalAmount: Number(form.get("totalAmount")),
+                                    notes: String(form.get("notes")) || undefined,
+                                  });
+                                  setEditingStay(null);
+                                } catch (err) {
+                                  setStayError(
+                                    err instanceof Error
+                                      ? err.message.replace(/^.*Uncaught Error:\s*/, "").replace(/ at .*$/s, "")
+                                      : "Could not save the stay.",
+                                  );
+                                }
+                              }}
+                            >
+                              <div className="grid grid-cols-2 gap-3">
+                                <Field label="Check-in">
+                                  <Input name="checkIn" type="date" defaultValue={stay.checkIn} required />
+                                </Field>
+                                <Field label="Check-out">
+                                  <Input name="checkOut" type="date" defaultValue={stay.checkOut} required />
+                                </Field>
+                                <Field label="Room">
+                                  <Select name="roomId" defaultValue={stay.roomId}>
+                                    {(rooms ?? []).map((room) => (
+                                      <option key={room._id} value={room._id}>{room.name}</option>
+                                    ))}
+                                  </Select>
+                                </Field>
+                                <Field label="Total (€)">
+                                  <Input name="totalAmount" type="number" min={0} step="0.01" defaultValue={stay.totalAmount} required />
+                                </Field>
+                                <Field label="Adults">
+                                  <Input name="adults" type="number" min={1} defaultValue={stay.adults} required />
+                                </Field>
+                                <Field label="Children">
+                                  <Input name="children" type="number" min={0} defaultValue={stay.children} required />
+                                </Field>
+                              </div>
+                              <Field label="Notes">
+                                <Textarea name="notes" defaultValue={stay.notes} />
+                              </Field>
+                              {stayError && <p className="text-xs font-semibold text-coral">{stayError}</p>}
+                              <div className="flex gap-2">
+                                <Button type="submit" size="sm">Save stay</Button>
+                                <Button type="button" size="sm" variant="secondary" onClick={() => { setEditingStay(null); setStayError(null); }}>
+                                  Cancel
+                                </Button>
+                              </div>
+                            </form>
+                          )}
                         </div>
                       )}
 
@@ -576,6 +650,47 @@ function GuestProfileDrawer({
                         >
                           {expandedStay === stay.bookingId ? "Hide details" : "Full details"}
                         </button>
+                        {canManage && (
+                          <button
+                            onClick={() => {
+                              setExpandedStay(stay.bookingId);
+                              setEditingStay(editingStay === stay.bookingId ? null : stay.bookingId);
+                              setStayError(null);
+                            }}
+                            className="flex items-center gap-1 text-xs font-semibold text-ink-faint transition-colors hover:text-ocean-700 cursor-pointer"
+                          >
+                            <PencilSimple size={12} /> Edit stay
+                          </button>
+                        )}
+                        {canManage &&
+                          (confirmDelete === stay.bookingId ? (
+                            <span className="flex items-center gap-2 text-xs font-semibold">
+                              <span className="text-coral">Delete this stay?</span>
+                              <button
+                                onClick={async () => {
+                                  await removeBooking({ bookingId: stay.bookingId });
+                                  setConfirmDelete(null);
+                                  setExpandedStay(null);
+                                }}
+                                className="rounded-lg bg-coral px-2.5 py-1 text-sand-50 cursor-pointer"
+                              >
+                                Yes, delete
+                              </button>
+                              <button
+                                onClick={() => setConfirmDelete(null)}
+                                className="text-ink-faint hover:text-ink cursor-pointer"
+                              >
+                                Keep
+                              </button>
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() => setConfirmDelete(stay.bookingId)}
+                              className="flex items-center gap-1 text-xs font-semibold text-ink-faint transition-colors hover:text-coral cursor-pointer"
+                            >
+                              Delete
+                            </button>
+                          ))}
                         <button
                           onClick={async () => {
                             await navigator.clipboard.writeText(
@@ -623,6 +738,38 @@ function GuestProfileDrawer({
                 </ul>
               )}
             </section>
+
+            {canManage && (
+              <section className="rounded-xl2 border border-coral/25 bg-coral/5 p-5">
+                <h3 className="text-sm font-bold text-coral">Danger zone</h3>
+                <p className="mt-1 text-xs text-ink-soft">
+                  Deleting a guest removes their profile, every stay, and all linked
+                  payments, extras and requests. This cannot be undone.
+                </p>
+                {confirmDelete === "guest" ? (
+                  <div className="mt-3 flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      onClick={async () => {
+                        await removeGuest({ guestId });
+                        setConfirmDelete(null);
+                        onClose();
+                      }}
+                      className="!bg-coral"
+                    >
+                      Yes — delete {guest.fullName}
+                    </Button>
+                    <Button size="sm" variant="secondary" onClick={() => setConfirmDelete(null)}>
+                      Cancel
+                    </Button>
+                  </div>
+                ) : (
+                  <Button size="sm" variant="secondary" className="mt-3" onClick={() => setConfirmDelete("guest")}>
+                    Delete guest…
+                  </Button>
+                )}
+              </section>
+            )}
           </div>
         )}
       </Drawer>

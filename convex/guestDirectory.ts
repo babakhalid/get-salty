@@ -119,6 +119,8 @@ export const profile = query({
         );
         return {
           bookingId: b._id,
+          roomId: b.roomId,
+          bedId: b.bedId,
           createdAt: b._creationTime,
           reservationCode: b.reservationCode,
           checkIn: b.checkIn,

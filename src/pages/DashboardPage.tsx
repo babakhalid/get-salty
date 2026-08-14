@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { Link } from "react-router";
 import { useQuery } from "convex/react";
 import { format } from "date-fns";
@@ -14,6 +14,7 @@ import {
   Waves,
 } from "@phosphor-icons/react";
 import { api } from "../../convex/_generated/api";
+import RangePicker from "../components/RangePicker";
 import {
   Badge,
   EmptyState,
@@ -157,7 +158,10 @@ function MovementList({
 export default function DashboardPage() {
   const today = isoToday();
   const monthStart = format(new Date(), "yyyy-MM-01");
+  const [rangeStart, setRangeStart] = useState(monthStart);
+  const [rangeEnd, setRangeEnd] = useState(today);
   const data = useQuery(api.dashboard.overview, { today, monthStart });
+  const period = useQuery(api.dashboard.period, { start: rangeStart, end: rangeEnd });
   const recentLogs = useQuery(api.auditLogs.recent);
   const outstanding = useQuery(api.payments.outstanding);
 
@@ -194,6 +198,52 @@ export default function DashboardPage() {
           isCurrency
         />
       </div>
+
+      {/* Period stats — pick any range */}
+      <section className="mt-10">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-sm font-bold uppercase tracking-wide text-ink-faint">
+            Over a period
+          </h2>
+          <RangePicker
+            start={rangeStart}
+            end={rangeEnd}
+            onChange={(s, e) => {
+              setRangeStart(s);
+              setRangeEnd(e);
+            }}
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+          <StatCard
+            label="Total guests (all time)"
+            value={period?.totalGuests ?? 0}
+            icon={<UsersThree size={20} weight="duotone" />}
+            accent
+          />
+          <StatCard
+            label="New guests"
+            value={period?.newGuests ?? 0}
+            icon={<UsersThree size={20} weight="duotone" />}
+          />
+          <StatCard
+            label="Bookings"
+            value={period?.bookings ?? 0}
+            icon={<Bed size={20} weight="duotone" />}
+          />
+          <StatCard
+            label="Nights"
+            value={period?.nights ?? 0}
+            icon={<Bed size={20} weight="duotone" />}
+          />
+          <StatCard
+            label="Revenue"
+            value={period?.revenue ?? 0}
+            icon={<CurrencyEur size={20} weight="duotone" />}
+            isCurrency
+          />
+        </div>
+      </section>
 
       {/* Asymmetric 2fr/1fr layout */}
       <div className="mt-10 grid grid-cols-1 gap-x-8 gap-y-10 lg:grid-cols-[2fr_1fr]">

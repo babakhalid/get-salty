@@ -10,13 +10,14 @@ import { Button, cx } from "../components/ui";
 import NewBookingDrawer from "../components/calendar/NewBookingDrawer";
 import BookingDetailDrawer from "../components/calendar/BookingDetailDrawer";
 import DayPanel from "../components/calendar/DayPanel";
+import RangePicker from "../components/RangePicker";
 import {
   SummaryCellDrawer,
   SummarySection,
   type OpenSummaryCell,
 } from "../components/calendar/SummaryRows";
 
-const DAYS_SHOWN = 28;
+const MAX_DAYS = 120; // hard cap so the grid stays fast
 const COL_W = 46; // px per day column
 const LABEL_W = 190;
 const ROW_H = 45; // day cell (44px) + row border
@@ -56,7 +57,11 @@ const prettyRange = (a: string, b: string) =>
   `${format(parseISO(a), "d MMM")} → ${format(parseISO(b), "d MMM")}`;
 
 export default function CalendarPage() {
-  const [anchor, setAnchor] = useState(() => new Date());
+  const defaultStart = () => startOfWeek(new Date(), { weekStartsOn: 1 });
+  const [rangeStart, setRangeStart] = useState(() => format(defaultStart(), "yyyy-MM-dd"));
+  const [rangeEnd, setRangeEnd] = useState(() =>
+    format(addDays(defaultStart(), 27), "yyyy-MM-dd"),
+  );
   const [drag, setDrag] = useState<Selection | null>(null);
   const [pendingBooking, setPendingBooking] = useState<{
     roomId: Id<"rooms">;
@@ -78,14 +83,23 @@ export default function CalendarPage() {
   const canManage = me?.role === "admin" || me?.role === "manager";
 
   const days = useMemo(() => {
-    const start = startOfWeek(anchor, { weekStartsOn: 1 });
-    return Array.from({ length: DAYS_SHOWN }, (_, i) => addDays(start, i));
-  }, [anchor]);
+    let start = parseISO(rangeStart);
+    let end = parseISO(rangeEnd);
+    if (end < start) [start, end] = [end, start];
+    let count = Math.round((end.getTime() - start.getTime()) / 86400000) + 1;
+    if (count > MAX_DAYS) {
+      // Anchor to the recent side — the useful end of an oversized range.
+      start = addDays(end, -(MAX_DAYS - 1));
+      count = MAX_DAYS;
+    }
+    if (count < 7) count = 7;
+    return Array.from({ length: count }, (_, i) => addDays(start, i));
+  }, [rangeStart, rangeEnd]);
 
-  const rangeStart = format(days[0], "yyyy-MM-dd");
-  const rangeEnd = format(addDays(days[DAYS_SHOWN - 1], 1), "yyyy-MM-dd");
+  const gridStart = format(days[0], "yyyy-MM-dd");
+  const gridEnd = format(addDays(days[days.length - 1], 1), "yyyy-MM-dd");
 
-  const grid = useQuery(api.calendar.grid, { start: rangeStart, end: rangeEnd });
+  const grid = useQuery(api.calendar.grid, { start: gridStart, end: gridEnd });
 
   useGSAP(
     () => {
@@ -102,7 +116,7 @@ export default function CalendarPage() {
         },
       );
     },
-    { scope, dependencies: [days[0].getTime(), grid === undefined] },
+    { scope, dependencies: [days[0].getTime(), days.length, grid === undefined] },
   );
 
   const idxOf = (iso: string) => {
@@ -226,29 +240,51 @@ export default function CalendarPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="secondary" size="sm" onClick={() => setAnchor((a) => addDays(a, -7))} aria-label="Previous week">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => {
+              setRangeStart(shiftIso(rangeStart, -days.length));
+              setRangeEnd(shiftIso(rangeEnd, -days.length));
+            }}
+            aria-label="Previous period"
+          >
             <CaretLeft size={15} weight="bold" />
           </Button>
-          <Button variant="secondary" size="sm" onClick={() => setAnchor(new Date())}>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => {
+              setRangeStart(format(defaultStart(), "yyyy-MM-dd"));
+              setRangeEnd(format(addDays(defaultStart(), 27), "yyyy-MM-dd"));
+            }}
+          >
             Today
           </Button>
-          <Button variant="secondary" size="sm" onClick={() => setAnchor((a) => addDays(a, 7))} aria-label="Next week">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => {
+              setRangeStart(shiftIso(rangeStart, days.length));
+              setRangeEnd(shiftIso(rangeEnd, days.length));
+            }}
+            aria-label="Next period"
+          >
             <CaretRight size={15} weight="bold" />
           </Button>
-          <input
-            type="date"
-            value={format(days[0], "yyyy-MM-dd")}
-            onChange={(e) => {
-              if (e.target.value) setAnchor(parseISO(e.target.value));
-            }}
-            className="num ml-2 cursor-pointer rounded-xl border border-sand-200 bg-white px-3 py-1.5 text-sm font-semibold text-ink transition-colors focus:border-ocean-400 focus:outline-none"
-            aria-label="Jump to date"
-          />
-          <span className="num ml-1 hidden text-sm font-semibold text-ink-soft sm:inline">
-            → {format(days[DAYS_SHOWN - 1], "d MMM yyyy")}
-          </span>
         </div>
       </header>
+
+      <div className="mb-4">
+        <RangePicker
+          start={format(days[0], "yyyy-MM-dd")}
+          end={format(days[days.length - 1], "yyyy-MM-dd")}
+          onChange={(s, e) => {
+            setRangeStart(s);
+            setRangeEnd(e);
+          }}
+        />
+      </div>
 
       {moveError && (
         <p className="mb-4 rounded-xl border border-coral/25 bg-coral/10 px-3.5 py-2.5 text-sm font-semibold text-coral">
@@ -269,11 +305,11 @@ export default function CalendarPage() {
         className="max-h-[calc(100dvh-230px)] overflow-auto rounded-xl2 border border-sand-200 bg-white select-none"
         style={{ boxShadow: "var(--shadow-diffuse)" }}
       >
-        <div style={{ minWidth: LABEL_W + DAYS_SHOWN * COL_W }}>
+        <div style={{ minWidth: LABEL_W + days.length * COL_W }}>
           {/* Date header — sticks while scrolling down */}
           <div
             className="sticky top-0 z-40 grid border-b border-sand-200 bg-sand-100"
-            style={{ gridTemplateColumns: `${LABEL_W}px repeat(${DAYS_SHOWN}, ${COL_W}px)` }}
+            style={{ gridTemplateColumns: `${LABEL_W}px repeat(${days.length}, ${COL_W}px)` }}
           >
             <div className="sticky left-0 z-50 border-r border-sand-200 bg-sand-100 px-4 py-2.5 text-xs font-bold uppercase tracking-wide text-ink-faint">
               Rooms & beds
@@ -333,7 +369,7 @@ export default function CalendarPage() {
                     "relative grid",
                     newRoomGroup ? "border-t border-sand-200" : "border-t border-sand-100",
                   )}
-                  style={{ gridTemplateColumns: `${LABEL_W}px repeat(${DAYS_SHOWN}, ${COL_W}px)` }}
+                  style={{ gridTemplateColumns: `${LABEL_W}px repeat(${days.length}, ${COL_W}px)` }}
                 >
                   {/* Label rail */}
                   <div className="sticky left-0 z-10 flex items-center gap-2 border-r border-sand-200 bg-white px-4 py-2">
@@ -406,7 +442,7 @@ export default function CalendarPage() {
                           )
                         : booking.checkOut;
                     const from = Math.max(idxOf(previewIn), -0.5);
-                    const to = Math.min(idxOf(previewOut), DAYS_SHOWN + 0.5);
+                    const to = Math.min(idxOf(previewOut), days.length + 0.5);
                     const left = LABEL_W + (from + 0.5) * COL_W;
                     const width = (to - from) * COL_W - 6;
                     if (width <= 0) return null;

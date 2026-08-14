@@ -17,6 +17,7 @@ import {
 } from "recharts";
 import { DownloadSimple, Plus, Trash } from "@phosphor-icons/react";
 import { api } from "../../convex/_generated/api";
+import RangePicker from "../components/RangePicker";
 import {
   Button,
   Field,
@@ -49,21 +50,26 @@ export default function AnalyticsPage() {
             How the season is really going — and the numbers for the books.
           </p>
         </div>
-        <div className="flex flex-wrap items-end gap-3">
-          <Field label="From">
-            <Input type="date" value={start} onChange={(e) => setStart(e.target.value)} />
-          </Field>
-          <Field label="To">
-            <Input type="date" value={end} onChange={(e) => setEnd(e.target.value)} />
-          </Field>
-        </div>
       </header>
 
+      <div className="mb-6">
+        <RangePicker
+          start={start}
+          end={end}
+          onChange={(s, e) => {
+            setStart(s);
+            setEnd(e);
+          }}
+        />
+      </div>
+
       {/* KPI strip — no boxes, just dividers */}
-      <div className="grid grid-cols-2 gap-y-5 rounded-xl2 border border-sand-200 bg-white py-5 md:grid-cols-5 md:divide-x md:divide-sand-200" style={{ boxShadow: "var(--shadow-diffuse)" }}>
+      <div className="grid grid-cols-2 gap-y-5 rounded-xl2 border border-sand-200 bg-white py-5 md:grid-cols-4 md:divide-x md:divide-sand-200 xl:grid-cols-7" style={{ boxShadow: "var(--shadow-diffuse)" }}>
         {[
           { label: "Bookings", value: report ? String(report.totalBookings) : "…" },
           { label: "Nights sold", value: report ? String(report.totalNights) : "…" },
+          { label: "New guests", value: report ? String(report.newGuests) : "…" },
+          { label: "Total guests", value: report ? String(report.totalGuests) : "…" },
           { label: "ADR", value: report ? eur(report.adr) : "…" },
           { label: "Revenue", value: report ? eur(report.totalRevenue) : "…" },
           { label: "Expenses", value: report ? eur(report.totalExpenses) : "…" },

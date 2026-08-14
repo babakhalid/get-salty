@@ -135,11 +135,19 @@ export const report = query({
       .filter((e) => e.date >= start && e.date <= end)
       .reduce((s, e) => s + e.amount, 0);
 
+    const rangeStartMs = Date.parse(start);
+    const rangeEndMs = Date.parse(end) + 86400000;
+    const newGuests = guests.filter(
+      (g) => g._creationTime >= rangeStartMs && g._creationTime < rangeEndMs,
+    ).length;
+
     return {
       monthly,
       bySource: Object.entries(bySource).map(([source, data]) => ({ source, ...data })),
       adr: totalNights === 0 ? 0 : Math.round((totalBookingValue / totalNights) * 100) / 100,
       totalBookings: inRange.length,
+      totalGuests: guests.length,
+      newGuests,
       totalNights,
       totalRevenue: Math.round(totalRevenue * 100) / 100,
       totalExpenses: Math.round(totalExpenses * 100) / 100,

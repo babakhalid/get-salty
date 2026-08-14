@@ -135,7 +135,10 @@ export const payrollHistory = query({
       const month = line.description.slice("[Payroll ".length, "[Payroll ".length + 7);
       const entry = byMonth.get(month) ?? { total: 0, members: 0 };
       entry.total += line.amount;
-      entry.members += 1;
+      // New bookings: one line per member. Legacy bookings were a single
+      // aggregated line "…] N team members" — read N from the text.
+      const legacy = line.description.match(/\]\s*(\d+) team member/);
+      entry.members += legacy ? Number(legacy[1]) : 1;
       byMonth.set(month, entry);
     }
     return [...byMonth.entries()]

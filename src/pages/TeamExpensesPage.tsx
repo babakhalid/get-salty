@@ -41,24 +41,39 @@ const DEFAULT_KIND: Record<string, "fixed" | "variable"> = {
 };
 
 export default function TeamExpensesPage() {
+  const [start, setStart] = useState(format(startOfMonth(new Date()), "yyyy-MM-dd"));
+  const [end, setEnd] = useState(isoToday());
   return (
     <div>
-      <header className="mb-8">
-        <h1 className="text-2xl font-black tracking-tight">Team & expenses</h1>
-        <p className="mt-1 text-sm text-ink-faint">
-          Who's on the payroll and where the money goes — fixed and variable.
-        </p>
+      <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-black tracking-tight">Team & expenses</h1>
+          <p className="mt-1 text-sm text-ink-faint">
+            Who's on the payroll and where the money goes — fixed and variable.
+          </p>
+        </div>
       </header>
-      <TeamSection />
-      <ExpensesSection />
+      <div className="mb-8">
+        <RangePicker
+          start={start}
+          end={end}
+          onChange={(s, e) => {
+            setStart(s);
+            setEnd(e);
+          }}
+        />
+      </div>
+      <TeamSection start={start} end={end} />
+      <ExpensesSection start={start} end={end} />
     </div>
   );
 }
 
 // ── Team ────────────────────────────────────────────────────────────────
 
-function TeamSection() {
+function TeamSection({ start, end }: { start: string; end: string }) {
   const members = useQuery(api.team.list);
+  const payroll = useQuery(api.team.payrollHistory, { start, end });
   const upsert = useMutation(api.team.upsert);
   const remove = useMutation(api.team.remove);
   const recordPayroll = useMutation(api.team.recordPayroll);
@@ -191,6 +206,32 @@ function TeamSection() {
         )}
       </div>
 
+      {/* Payroll booked inside the selected period */}
+      <div className="mt-4 rounded-xl2 border border-sand-200 bg-white px-5 py-4" style={{ boxShadow: "var(--shadow-diffuse)" }}>
+        <p className="mb-2 text-xs font-bold uppercase tracking-wide text-ink-faint">
+          Payroll in this period
+        </p>
+        {payroll === undefined ? (
+          <SkeletonRows count={1} />
+        ) : payroll.length === 0 ? (
+          <p className="text-sm text-ink-faint">
+            No payroll booked in this period — use the button above.
+          </p>
+        ) : (
+          <ul className="divide-y divide-sand-100">
+            {payroll.map((row) => (
+              <li key={row.month} className="flex items-center justify-between gap-3 py-2 text-sm">
+                <span className="num font-semibold">{row.month}</span>
+                <span className="text-ink-faint">
+                  {row.members} member{row.members === 1 ? "" : "s"} paid
+                </span>
+                <span className="num font-bold">{eur(row.total)}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
       <Drawer
         open={editing !== null}
         onClose={() => setEditing(null)}
@@ -251,9 +292,7 @@ function TeamSection() {
 
 // ── Expenses ────────────────────────────────────────────────────────────
 
-function ExpensesSection() {
-  const [start, setStart] = useState(format(startOfMonth(new Date()), "yyyy-MM-dd"));
-  const [end, setEnd] = useState(isoToday());
+function ExpensesSection({ start, end }: { start: string; end: string }) {
   const [showForm, setShowForm] = useState(false);
   const [category, setCategory] = useState<string>("food");
   const expenses = useQuery(api.payments.expensesInRange, { start, end });
@@ -293,17 +332,6 @@ function ExpensesSection() {
             <Plus size={14} weight="bold" /> Add expense
           </Button>
         </div>
-      </div>
-
-      <div className="mb-4">
-        <RangePicker
-          start={start}
-          end={end}
-          onChange={(s, e) => {
-            setStart(s);
-            setEnd(e);
-          }}
-        />
       </div>
 
       {showForm && (

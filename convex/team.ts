@@ -112,3 +112,33 @@ export const recordPayroll = mutation({
     return { total, members: members.length };
   },
 });
+
+/** Payroll bookings inside a date range, grouped by month — for tracking. */
+export const payrollHistory = query({
+  args: { start: v.string(), end: v.string() },
+  handler: async (ctx, args) => {
+    await requireRole(ctx, "manager");
+    const expenses = await ctx.db.query("expenses").collect();
+    const lines = expenses.filter(
+      (e) =>
+        e.date >= args.start &&
+        e.date <= args.end &&
+        e.description.startsWith("[Payroll "),
+    );
+    const byMonth = new Map<string, { total: number; members: number }>();
+    for (const line of lines) {
+      const month = line.description.slice("[Payroll ".length, "[Payroll ".length + 7);
+      const entry = byMonth.get(month) ?? { total: 0, members: 0 };
+      entry.total += line.amount;
+      entry.members += 1;
+      byMonth.set(month, entry);
+    }
+    return [...byMonth.entries()]
+      .map(([month, data]) => ({
+        month,
+        total: Math.round(data.total * 100) / 100,
+        members: data.members,
+      }))
+      .sort((a, b) => b.month.localeCompare(a.month));
+  },
+});

@@ -124,6 +124,8 @@ export default defineSchema({
     active: v.boolean(),
     startTime: v.optional(v.string()), // e.g. breakfast at 09:00
     imageUrl: v.optional(v.string()),
+    // Auto-attached to stays when the calendar recalculates a booking
+    includedByDefault: v.optional(v.boolean()),
   }),
 
   packages: defineTable({

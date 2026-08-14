@@ -186,16 +186,15 @@ export default function DashboardPage() {
           icon={<UsersThree size={20} weight="duotone" />}
         />
         <StatCard
-          label="Pending requests"
-          value={(data?.pendingChannelRequests ?? 0) + (data?.pendingGuestRequests ?? 0)}
+          label="Arrivals today"
+          value={data?.arrivals.length ?? 0}
           icon={<Tray size={20} weight="duotone" />}
         />
         <StatCard
-          label="Revenue this month"
-          value={data?.revenueMtd ?? 0}
-          icon={<CurrencyEur size={20} weight="duotone" />}
+          label="Pending requests"
+          value={(data?.pendingChannelRequests ?? 0) + (data?.pendingGuestRequests ?? 0)}
+          icon={<Tray size={20} weight="duotone" />}
           accent
-          isCurrency
         />
       </div>
 
@@ -219,7 +218,6 @@ export default function DashboardPage() {
             label="Total guests (all time)"
             value={period?.totalGuests ?? 0}
             icon={<UsersThree size={20} weight="duotone" />}
-            accent
           />
           <StatCard
             label="New guests"
@@ -240,6 +238,7 @@ export default function DashboardPage() {
             label="Revenue"
             value={period?.revenue ?? 0}
             icon={<CurrencyEur size={20} weight="duotone" />}
+            accent
             isCurrency
           />
         </div>

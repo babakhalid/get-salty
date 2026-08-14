@@ -20,6 +20,7 @@ import {
 } from "@phosphor-icons/react";
 import { api } from "../../convex/_generated/api";
 import { cx } from "./ui";
+import { Toaster } from "./toast";
 
 const NAV = [
   { to: "/dashboard", label: "Dashboard", icon: SquaresFour, min: "crew" },
@@ -184,6 +185,7 @@ export default function AppShell() {
       <main ref={mainRef} className="min-w-0 flex-1 overflow-y-auto">
         <div className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 md:py-8 lg:px-10">
           <Outlet />
+      <Toaster />
         </div>
       </main>
     </div>

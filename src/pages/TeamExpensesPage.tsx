@@ -17,6 +17,7 @@ import {
   cx,
 } from "../components/ui";
 import RangePicker from "../components/RangePicker";
+import { errorMessage, toast } from "../components/toast";
 import { downloadCsv, eur, isoToday, prettyDate } from "../lib/format";
 
 const CATEGORIES = [
@@ -79,7 +80,6 @@ function TeamSection({ start, end }: { start: string; end: string }) {
   const recordPayroll = useMutation(api.team.recordPayroll);
   const [editing, setEditing] = useState<"new" | Id<"teamMembers"> | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<Id<"teamMembers"> | null>(null);
-  const [payrollMsg, setPayrollMsg] = useState<string | null>(null);
   const editingItem = members?.find((m) => m._id === editing);
 
   const month = format(startOfMonth(new Date()), "yyyy-MM");
@@ -100,17 +100,13 @@ function TeamSection({ start, end }: { start: string; end: string }) {
             onClick={async () => {
               try {
                 const res = await recordPayroll({ month });
-                setPayrollMsg(
+                toast(
+                  "success",
                   `Payroll ${month} booked: ${eur(res.total)} for ${res.members} people.`,
                 );
               } catch (err) {
-                setPayrollMsg(
-                  err instanceof Error
-                    ? err.message.replace(/^.*Uncaught Error:\s*/, "").replace(/ at .*$/s, "")
-                    : "Could not record payroll.",
-                );
+                toast("error", errorMessage(err, "Could not record payroll."));
               }
-              setTimeout(() => setPayrollMsg(null), 5000);
             }}
           >
             <Wallet size={14} weight="duotone" />
@@ -121,12 +117,6 @@ function TeamSection({ start, end }: { start: string; end: string }) {
           </Button>
         </div>
       </div>
-
-      {payrollMsg && (
-        <p className="mb-3 rounded-xl border border-sand-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-ink-soft">
-          {payrollMsg}
-        </p>
-      )}
 
       <div
         className="overflow-x-auto rounded-xl2 border border-sand-200 bg-white"
@@ -167,7 +157,12 @@ function TeamSection({ start, end }: { start: string; end: string }) {
                       <span className="flex items-center justify-end gap-2 text-xs font-semibold">
                         <button
                           onClick={async () => {
-                            await remove({ id: member._id });
+                            try {
+                              await remove({ id: member._id });
+                              toast("success", `${member.name} removed from the team.`);
+                            } catch (err) {
+                              toast("error", errorMessage(err, "Could not remove the member."));
+                            }
                             setConfirmDelete(null);
                           }}
                           className="rounded-lg bg-coral px-2.5 py-1 text-sand-50 cursor-pointer"
@@ -242,15 +237,20 @@ function TeamSection({ start, end }: { start: string; end: string }) {
           onSubmit={async (e) => {
             e.preventDefault();
             const form = new FormData(e.currentTarget);
-            await upsert({
-              id: editingItem?._id,
-              name: String(form.get("name")),
-              position: String(form.get("position")),
-              salary: Number(form.get("salary")),
-              active: form.get("active") === "on",
-              notes: String(form.get("notes")) || undefined,
-            });
-            setEditing(null);
+            try {
+              await upsert({
+                id: editingItem?._id,
+                name: String(form.get("name")),
+                position: String(form.get("position")),
+                salary: Number(form.get("salary")),
+                active: form.get("active") === "on",
+                notes: String(form.get("notes")) || undefined,
+              });
+              toast("success", editingItem ? "Team member updated." : "Team member added.");
+              setEditing(null);
+            } catch (err) {
+              toast("error", errorMessage(err, "Could not save the team member."));
+            }
           }}
         >
           <Field label="Full name">
@@ -340,14 +340,19 @@ function ExpensesSection({ start, end }: { start: string; end: string }) {
           onSubmit={async (e) => {
             e.preventDefault();
             const form = new FormData(e.currentTarget);
-            await recordExpense({
-              category: form.get("category") as (typeof CATEGORIES)[number],
-              kind: form.get("kind") as "fixed" | "variable",
-              amount: Number(form.get("amount")),
-              date: String(form.get("date")),
-              description: String(form.get("description")),
-            });
-            setShowForm(false);
+            try {
+              await recordExpense({
+                category: form.get("category") as (typeof CATEGORIES)[number],
+                kind: form.get("kind") as "fixed" | "variable",
+                amount: Number(form.get("amount")),
+                date: String(form.get("date")),
+                description: String(form.get("description")),
+              });
+              toast("success", "Expense recorded.");
+              setShowForm(false);
+            } catch (err) {
+              toast("error", errorMessage(err, "Could not record the expense."));
+            }
           }}
         >
           <Field label="Category">
@@ -427,7 +432,14 @@ function ExpensesSection({ start, end }: { start: string; end: string }) {
                   <td className="num px-5 py-3 text-right font-bold">{eur(expense.amount)}</td>
                   <td className="px-5 py-3 text-right">
                     <button
-                      onClick={() => void removeExpense({ expenseId: expense._id })}
+                      onClick={async () => {
+                        try {
+                          await removeExpense({ expenseId: expense._id });
+                          toast("success", "Expense deleted.");
+                        } catch (err) {
+                          toast("error", errorMessage(err, "Could not delete the expense."));
+                        }
+                      }}
                       className="text-ink-faint transition-colors hover:text-coral cursor-pointer"
                       aria-label="Delete expense"
                     >

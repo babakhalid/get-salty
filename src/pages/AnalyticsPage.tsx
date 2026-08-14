@@ -83,6 +83,15 @@ export default function AnalyticsPage() {
       <div className="mt-10 grid grid-cols-1 gap-8 lg:grid-cols-[2fr_1fr]">
         <div>
           <SectionTitle>Revenue vs expenses</SectionTitle>
+          {report && (
+            <p className="mb-3 text-sm text-ink-soft">
+              <span className="font-bold">Payroll {eur(report.payrollExpenses)}</span>
+              <span className="text-ink-faint"> · </span>
+              Other fixed {eur(report.otherFixedExpenses)}
+              <span className="text-ink-faint"> · </span>
+              Variable {eur(report.variableExpenses)}
+            </p>
+          )}
           <div className="rounded-xl2 border border-sand-200 bg-white p-5" style={{ boxShadow: "var(--shadow-diffuse)" }}>
             {report === undefined ? (
               <SkeletonRows count={4} />
@@ -290,6 +299,8 @@ function buildFullReport(
     totalExpenses: number;
     fixedExpenses: number;
     variableExpenses: number;
+    payrollExpenses: number;
+    otherFixedExpenses: number;
     monthly: { month: string; occupancy: number; revenue: number; expenses: number }[];
   },
   data: {
@@ -319,6 +330,8 @@ function buildFullReport(
     `Revenue,${report.totalRevenue}`,
     `Expenses (total),${report.totalExpenses}`,
     `Expenses (fixed),${report.fixedExpenses}`,
+    `— of which payroll,${report.payrollExpenses}`,
+    `— other fixed,${report.otherFixedExpenses}`,
     `Expenses (variable),${report.variableExpenses}`,
     `Net result,${net}`,
     `Bookings,${report.totalBookings}`,

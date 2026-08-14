@@ -83,23 +83,30 @@ export const recordPayroll = mutation({
     if (expenses.some((e) => e.description.startsWith(marker))) {
       throw new Error(`Payroll for ${args.month} is already recorded`);
     }
-    const members = (await ctx.db.query("teamMembers").collect()).filter((m) => m.active);
+    const members = (await ctx.db.query("teamMembers").collect()).filter(
+      (m) => m.active && m.salary > 0,
+    );
     const total = members.reduce((s, m) => s + m.salary, 0);
     if (total <= 0) throw new Error("No active team members with a salary");
-    const id = await ctx.db.insert("expenses", {
-      category: "salary",
-      kind: "fixed",
-      amount: Math.round(total * 100) / 100,
-      currency: "EUR",
-      date: `${args.month}-28`,
-      description: `${marker} ${members.length} team member${members.length === 1 ? "" : "s"}`,
-      recordedBy: actor._id,
-    });
+    // One expense line per person, so exports show exactly who was paid what.
+    let firstId = null;
+    for (const member of members) {
+      const id = await ctx.db.insert("expenses", {
+        category: "salary",
+        kind: "fixed",
+        amount: Math.round(member.salary * 100) / 100,
+        currency: "EUR",
+        date: `${args.month}-28`,
+        description: `${marker} ${member.name} — ${member.position}`,
+        recordedBy: actor._id,
+      });
+      firstId ??= id;
+    }
     await logAudit(ctx, actor, {
       action: "expense.payroll",
       entity: "expenses",
-      entityId: id,
-      summary: `Payroll ${args.month}: €${total.toFixed(2)} for ${members.length} team members`,
+      entityId: firstId!,
+      summary: `Payroll ${args.month}: €${total.toFixed(2)} across ${members.length} team members`,
       after: { month: args.month, total, members: members.length },
     });
     return { total, members: members.length };

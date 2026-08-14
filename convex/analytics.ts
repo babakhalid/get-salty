@@ -133,8 +133,14 @@ export const report = query({
     );
     const expensesInRange = expenses.filter((e) => e.date >= start && e.date <= end);
     const totalExpenses = expensesInRange.reduce((s, e) => s + e.amount, 0);
+    const payrollExpenses = expensesInRange
+      .filter((e) => e.category === "salary")
+      .reduce((s, e) => s + e.amount, 0);
     const fixedExpenses = expensesInRange
       .filter((e) => e.kind === "fixed")
+      .reduce((s, e) => s + e.amount, 0);
+    const otherFixedExpenses = expensesInRange
+      .filter((e) => e.kind === "fixed" && e.category !== "salary")
       .reduce((s, e) => s + e.amount, 0);
     const variableExpenses = totalExpenses - fixedExpenses;
 
@@ -156,6 +162,8 @@ export const report = query({
       totalExpenses: Math.round(totalExpenses * 100) / 100,
       fixedExpenses: Math.round(fixedExpenses * 100) / 100,
       variableExpenses: Math.round(variableExpenses * 100) / 100,
+      payrollExpenses: Math.round(payrollExpenses * 100) / 100,
+      otherFixedExpenses: Math.round(otherFixedExpenses * 100) / 100,
       activityPopularity: Object.values(activityPopularity).sort(
         (a, b) => b.participants - a.participants,
       ),

@@ -278,7 +278,6 @@ function GuestProfileDrawer({
   const [editing, setEditing] = useState(false);
   const [openBookingId, setOpenBookingId] = useState<Id<"bookings"> | null>(null);
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
-  const [expandedStay, setExpandedStay] = useState<string | null>(null);
   const [editingStay, setEditingStay] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [stayError, setStayError] = useState<string | null>(null);
@@ -464,8 +463,7 @@ function GuestProfileDrawer({
                           )}
                         </span>
                       </div>
-                      {expandedStay === stay.bookingId && (
-                        <div className="mt-3 flex flex-col gap-4 border-t border-sand-100 pt-3 text-sm">
+                      <div className="mt-3 flex flex-col gap-4 border-t border-sand-100 pt-3 text-sm">
                           <div className="grid grid-cols-2 gap-x-6 gap-y-2.5 sm:grid-cols-3">
                             <div>
                               <p className="text-xs text-ink-faint">Reservation</p>
@@ -639,21 +637,11 @@ function GuestProfileDrawer({
                             </form>
                           )}
                         </div>
-                      )}
 
                       <div className="mt-2 flex items-center gap-4">
-                        <button
-                          onClick={() =>
-                            setExpandedStay(expandedStay === stay.bookingId ? null : stay.bookingId)
-                          }
-                          className="flex items-center gap-1 text-xs font-semibold text-ocean-700 transition-colors hover:underline cursor-pointer"
-                        >
-                          {expandedStay === stay.bookingId ? "Hide details" : "Full details"}
-                        </button>
                         {canManage && (
                           <button
                             onClick={() => {
-                              setExpandedStay(stay.bookingId);
                               setEditingStay(editingStay === stay.bookingId ? null : stay.bookingId);
                               setStayError(null);
                             }}
@@ -670,7 +658,6 @@ function GuestProfileDrawer({
                                 onClick={async () => {
                                   await removeBooking({ bookingId: stay.bookingId });
                                   setConfirmDelete(null);
-                                  setExpandedStay(null);
                                 }}
                                 className="rounded-lg bg-coral px-2.5 py-1 text-sand-50 cursor-pointer"
                               >

@@ -56,7 +56,7 @@ const prettyRange = (a: string, b: string) =>
   `${format(parseISO(a), "d MMM")} → ${format(parseISO(b), "d MMM")}`;
 
 export default function CalendarPage() {
-  const [weekOffset, setWeekOffset] = useState(0);
+  const [anchor, setAnchor] = useState(() => new Date());
   const [drag, setDrag] = useState<Selection | null>(null);
   const [pendingBooking, setPendingBooking] = useState<{
     roomId: Id<"rooms">;
@@ -78,11 +78,9 @@ export default function CalendarPage() {
   const canManage = me?.role === "admin" || me?.role === "manager";
 
   const days = useMemo(() => {
-    const anchor = startOfWeek(addDays(new Date(), weekOffset * 7), {
-      weekStartsOn: 1,
-    });
-    return Array.from({ length: DAYS_SHOWN }, (_, i) => addDays(anchor, i));
-  }, [weekOffset]);
+    const start = startOfWeek(anchor, { weekStartsOn: 1 });
+    return Array.from({ length: DAYS_SHOWN }, (_, i) => addDays(start, i));
+  }, [anchor]);
 
   const rangeStart = format(days[0], "yyyy-MM-dd");
   const rangeEnd = format(addDays(days[DAYS_SHOWN - 1], 1), "yyyy-MM-dd");
@@ -104,7 +102,7 @@ export default function CalendarPage() {
         },
       );
     },
-    { scope, dependencies: [weekOffset, grid === undefined] },
+    { scope, dependencies: [days[0].getTime(), grid === undefined] },
   );
 
   const idxOf = (iso: string) => {
@@ -228,17 +226,26 @@ export default function CalendarPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="secondary" size="sm" onClick={() => setWeekOffset((w) => w - 1)} aria-label="Previous week">
+          <Button variant="secondary" size="sm" onClick={() => setAnchor((a) => addDays(a, -7))} aria-label="Previous week">
             <CaretLeft size={15} weight="bold" />
           </Button>
-          <Button variant="secondary" size="sm" onClick={() => setWeekOffset(0)}>
+          <Button variant="secondary" size="sm" onClick={() => setAnchor(new Date())}>
             Today
           </Button>
-          <Button variant="secondary" size="sm" onClick={() => setWeekOffset((w) => w + 1)} aria-label="Next week">
+          <Button variant="secondary" size="sm" onClick={() => setAnchor((a) => addDays(a, 7))} aria-label="Next week">
             <CaretRight size={15} weight="bold" />
           </Button>
-          <span className="num ml-2 text-sm font-semibold text-ink-soft">
-            {format(days[0], "d MMM")} – {format(days[DAYS_SHOWN - 1], "d MMM yyyy")}
+          <input
+            type="date"
+            value={format(days[0], "yyyy-MM-dd")}
+            onChange={(e) => {
+              if (e.target.value) setAnchor(parseISO(e.target.value));
+            }}
+            className="num ml-2 cursor-pointer rounded-xl border border-sand-200 bg-white px-3 py-1.5 text-sm font-semibold text-ink transition-colors focus:border-ocean-400 focus:outline-none"
+            aria-label="Jump to date"
+          />
+          <span className="num ml-1 hidden text-sm font-semibold text-ink-soft sm:inline">
+            → {format(days[DAYS_SHOWN - 1], "d MMM yyyy")}
           </span>
         </div>
       </header>
@@ -259,16 +266,16 @@ export default function CalendarPage() {
       )}
 
       <div
-        className="overflow-x-auto rounded-xl2 border border-sand-200 bg-white select-none"
+        className="max-h-[calc(100dvh-230px)] overflow-auto rounded-xl2 border border-sand-200 bg-white select-none"
         style={{ boxShadow: "var(--shadow-diffuse)" }}
       >
         <div style={{ minWidth: LABEL_W + DAYS_SHOWN * COL_W }}>
-          {/* Date header */}
+          {/* Date header — sticks while scrolling down */}
           <div
-            className="grid border-b border-sand-200 bg-sand-100/60"
+            className="sticky top-0 z-40 grid border-b border-sand-200 bg-sand-100"
             style={{ gridTemplateColumns: `${LABEL_W}px repeat(${DAYS_SHOWN}, ${COL_W}px)` }}
           >
-            <div className="sticky left-0 z-20 border-r border-sand-200 bg-sand-100 px-4 py-2.5 text-xs font-bold uppercase tracking-wide text-ink-faint">
+            <div className="sticky left-0 z-50 border-r border-sand-200 bg-sand-100 px-4 py-2.5 text-xs font-bold uppercase tracking-wide text-ink-faint">
               Rooms & beds
             </div>
             {days.map((day, i) => {
@@ -279,9 +286,9 @@ export default function CalendarPage() {
                   key={i}
                   onClick={() => setOpenDay(iso)}
                   className={cx(
-                    "flex flex-col items-center gap-0.5 border-r border-sand-100 py-2 transition-colors hover:bg-ocean-50 cursor-pointer",
-                    weekend && "bg-sand-100/80",
-                    isToday(day) && "bg-ocean-100/70",
+                    "flex flex-col items-center gap-0.5 border-r border-sand-200/60 bg-sand-100 py-2 transition-colors hover:bg-ocean-50 cursor-pointer",
+                    weekend && "bg-sand-200/70",
+                    isToday(day) && "bg-ocean-100",
                   )}
                   title={`Day briefing — ${iso}`}
                 >
@@ -341,7 +348,9 @@ export default function CalendarPage() {
                     ) : (
                       <div className="min-w-0 leading-tight">
                         <p className="truncate text-[13px] font-semibold">{row.roomName}</p>
-                        <p className="truncate text-[11px] text-ink-faint">{row.typeName}</p>
+                        <p className="truncate text-[11px] text-ink-faint">
+                          {row.typeName} · sleeps {row.capacity}
+                        </p>
                       </div>
                     )}
                     {row.maintenance && (

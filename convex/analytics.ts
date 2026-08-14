@@ -228,7 +228,7 @@ export const exportData = query({
       .filter((e) => e.date >= args.start && e.date <= args.end)
       .map((e) => ({
         date: e.date,
-        category: e.category,
+        category: e.category === "other" && e.customLabel ? `other — ${e.customLabel}` : e.category,
         kind: e.kind ?? "variable",
         description: e.description,
         amount: e.amount,

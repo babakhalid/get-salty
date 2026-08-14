@@ -336,7 +336,7 @@ function ExpensesSection({ start, end }: { start: string; end: string }) {
 
       {showForm && (
         <form
-          className="mb-4 grid grid-cols-1 items-end gap-3 rounded-xl2 border border-sand-200 bg-white p-4 md:grid-cols-[1fr_1fr_1fr_2fr_1fr_auto]"
+          className="mb-4 grid grid-cols-1 items-end gap-3 rounded-xl2 border border-sand-200 bg-white p-4 md:grid-cols-3 xl:flex xl:flex-wrap xl:[&>*]:min-w-36"
           onSubmit={async (e) => {
             e.preventDefault();
             const form = new FormData(e.currentTarget);
@@ -344,6 +344,7 @@ function ExpensesSection({ start, end }: { start: string; end: string }) {
               await recordExpense({
                 category: form.get("category") as (typeof CATEGORIES)[number],
                 kind: form.get("kind") as "fixed" | "variable",
+                customLabel: String(form.get("customLabel") ?? "") || undefined,
                 amount: Number(form.get("amount")),
                 date: String(form.get("date")),
                 description: String(form.get("description")),
@@ -374,6 +375,11 @@ function ExpensesSection({ start, end }: { start: string; end: string }) {
               <option value="variable">Variable</option>
             </Select>
           </Field>
+          {category === "other" && (
+            <Field label="Title">
+              <Input name="customLabel" required placeholder="Name this expense…" />
+            </Field>
+          )}
           <Field label="Amount (EUR)">
             <Input name="amount" type="number" step="0.01" min="0.01" required />
           </Field>
@@ -415,7 +421,11 @@ function ExpensesSection({ start, end }: { start: string; end: string }) {
               {expenses.map((expense) => (
                 <tr key={expense._id} className="transition-colors hover:bg-sand-50">
                   <td className="num px-5 py-3 text-ink-soft">{prettyDate(expense.date)}</td>
-                  <td className="px-5 py-3 capitalize">{expense.category}</td>
+                  <td className="px-5 py-3 capitalize">
+                    {expense.category === "other" && expense.customLabel
+                      ? expense.customLabel
+                      : expense.category}
+                  </td>
                   <td className="px-5 py-3">
                     <span
                       className={cx(

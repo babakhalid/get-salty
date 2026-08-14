@@ -341,6 +341,8 @@ export default defineSchema({
     ),
     // fixed = same every month (salary, rent…); variable = fluctuates
     kind: v.optional(v.union(v.literal("fixed"), v.literal("variable"))),
+    // Required label when category is "other" — names the expense type
+    customLabel: v.optional(v.string()),
     amount: v.number(),
     currency: v.string(),
     date: v.string(),

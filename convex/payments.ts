@@ -91,6 +91,7 @@ export const recordExpense = mutation({
       v.literal("other"),
     ),
     kind: v.optional(v.union(v.literal("fixed"), v.literal("variable"))),
+    customLabel: v.optional(v.string()),
     amount: v.number(),
     date: v.string(),
     description: v.string(),
@@ -98,6 +99,9 @@ export const recordExpense = mutation({
   handler: async (ctx, args) => {
     const actor = await requireRole(ctx, "manager");
     if (args.amount <= 0) throw new Error("Amount must be positive");
+    if (args.category === "other" && !args.customLabel?.trim()) {
+      throw new Error("Give this expense a title so it's recognisable later");
+    }
     const id = await ctx.db.insert("expenses", {
       ...args,
       currency: "EUR",

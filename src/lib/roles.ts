@@ -24,7 +24,8 @@ export const PAGE_ACCESS: Record<Page, Role[]> = {
   channels: ["admin", "manager", "marketing"],
   analytics: ["admin", "manager", "marketing"],
   team: ["admin", "manager"],
-  settings: ["admin", "manager"],
+  // Marketing reaches Settings for the Tracking tab only (enforced in-page).
+  settings: ["admin", "manager", "marketing"],
   logs: ["admin", "manager"],
 };
 

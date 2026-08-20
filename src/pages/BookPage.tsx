@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router";
 import { useMutation, useQuery } from "convex/react";
 import {
@@ -31,6 +31,7 @@ import type { Id } from "../../convex/_generated/dataModel";
 import { Button, Field, Input, Select, SkeletonRows, Textarea, cx } from "../components/ui";
 import { formatCardNumber, formatExpiry } from "../components/portal/PaymentSection";
 import { eur, prettyDate } from "../lib/format";
+import { initTracking, track } from "../lib/tracking";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const CAL_WINDOW_DAYS = 120;
@@ -99,6 +100,17 @@ export default function BookPage() {
   });
   const createRequest = useMutation(api.publicBooking.createRequest);
   const catalog = useQuery(api.publicBooking.listPackages, {});
+
+  // Conversion tracking (Meta Pixel + Google Tag/Ads) — loads only if the
+  // client configured IDs in Settings → Tracking.
+  const trackingConfig = useQuery(api.tracking.get, {});
+  useEffect(() => {
+    if (trackingConfig !== undefined) initTracking(trackingConfig);
+  }, [trackingConfig]);
+  useEffect(() => {
+    if (trackingConfig) track("ViewContent");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trackingConfig !== undefined && trackingConfig !== null]);
 
   useGSAP(
     () => {
@@ -297,6 +309,9 @@ export default function BookPage() {
         })),
       });
       setConfirmation(result);
+      // Booking request captured (a lead) + entering the payment step.
+      track("Lead", { value: result.totalAmount, currency: "EUR", id: result.reservationCode });
+      track("InitiateCheckout", { value: result.totalAmount, currency: "EUR" });
       window.scrollTo({ top: 0 });
     } catch (err) {
       setError(
@@ -496,6 +511,7 @@ export default function BookPage() {
             <PaymentStep
               confirmation={confirmation}
               onPaid={(amount) => {
+                track("Purchase", { value: amount, currency: "EUR", id: confirmation.reservationCode });
                 setPaidNow(amount);
                 setFinished(true);
               }}

@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router";
 import { useMutation, useQuery } from "convex/react";
 import { gsap } from "gsap";
@@ -20,10 +20,15 @@ import {
 import { eur, prettyDate } from "../lib/format";
 import PaymentSection from "../components/portal/PaymentSection";
 import { downloadBookingConfirmation } from "../lib/bookingConfirmationPdf";
+import { initTracking } from "../lib/tracking";
 
 export default function GuestPortalPage() {
   const { token = "" } = useParams();
   const stay = useQuery(api.portal.stay, { token });
+  const trackingConfig = useQuery(api.tracking.get, {});
+  useEffect(() => {
+    if (trackingConfig !== undefined) initTracking(trackingConfig);
+  }, [trackingConfig]);
   const updatePreferences = useMutation(api.portal.updatePreferences);
   const placeOrder = useMutation(api.portal.placeOrder);
   const scope = useRef<HTMLDivElement>(null);

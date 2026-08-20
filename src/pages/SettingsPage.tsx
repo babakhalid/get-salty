@@ -15,26 +15,36 @@ import {
   cx,
 } from "../components/ui";
 import { eur } from "../lib/format";
+import { errorMessage, toast } from "../components/toast";
 
-const TABS = ["Team", "Rooms", "Activities", "Services", "Packages"] as const;
+const TABS = ["Team", "Rooms", "Activities", "Services", "Packages", "Tracking"] as const;
 type Tab = (typeof TABS)[number];
 
 export default function SettingsPage() {
-  const [tab, setTab] = useState<Tab>("Team");
   const me = useQuery(api.users.me);
   const isAdmin = me?.role === "admin";
+  const isMarketing = me?.role === "marketing";
+  // Marketing only reaches Settings for the Tracking tab.
+  const visibleTabs = TABS.filter((t) => {
+    if (isMarketing) return t === "Tracking";
+    if (t === "Team") return isAdmin;
+    return true;
+  });
+  const [tab, setTab] = useState<Tab>(isMarketing ? "Tracking" : "Team");
 
   return (
     <div>
       <header className="mb-6">
         <h1 className="text-2xl font-black tracking-tight">Settings</h1>
         <p className="mt-1 text-sm text-ink-faint">
-          The house setup — team, inventory and what you sell.
+          {isMarketing
+            ? "Conversion tracking for your ad campaigns."
+            : "The house setup — team, inventory and what you sell."}
         </p>
       </header>
 
       <div className="mb-8 flex gap-1 overflow-x-auto border-b border-sand-200">
-        {TABS.filter((t) => t !== "Team" || isAdmin).map((t) => (
+        {visibleTabs.map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -51,10 +61,88 @@ export default function SettingsPage() {
       </div>
 
       {tab === "Team" && isAdmin && <TeamTab meId={me?._id} />}
-      {tab === "Rooms" && <RoomsTab />}
-      {tab === "Activities" && <ActivitiesTab />}
-      {tab === "Services" && <ServicesTab />}
-      {tab === "Packages" && <PackagesTab />}
+      {tab === "Rooms" && !isMarketing && <RoomsTab />}
+      {tab === "Activities" && !isMarketing && <ActivitiesTab />}
+      {tab === "Services" && !isMarketing && <ServicesTab />}
+      {tab === "Packages" && !isMarketing && <PackagesTab />}
+      {tab === "Tracking" && <TrackingTab />}
+    </div>
+  );
+}
+
+// ── Conversion tracking (Meta Pixel + Google Tag / Ads) ──────────────────
+
+function TrackingTab() {
+  const cfg = useQuery(api.tracking.getForAdmin, {});
+  const save = useMutation(api.tracking.set);
+  const [saved, setSaved] = useState(false);
+
+  if (cfg === undefined) return <SkeletonRows count={4} />;
+
+  return (
+    <div className="max-w-2xl">
+      <div
+        className="rounded-xl2 border border-sand-200 bg-white p-6"
+        style={{ boxShadow: "var(--shadow-diffuse)" }}
+      >
+        <h2 className="font-bold tracking-tight">Conversion tracking</h2>
+        <p className="mt-1 text-sm text-ink-faint">
+          Paste your Meta Pixel and Google tag IDs. Once enabled, the public
+          booking page reports views, booking requests and payments to Meta and
+          Google Ads automatically — with the booking value for accurate ROAS.
+        </p>
+        <form
+          className="mt-5 flex flex-col gap-4"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            const form = new FormData(e.currentTarget);
+            try {
+              await save({
+                metaPixelId: String(form.get("metaPixelId") ?? ""),
+                googleTagId: String(form.get("googleTagId") ?? ""),
+                googleAdsPurchaseLabel: String(form.get("googleAdsPurchaseLabel") ?? ""),
+                googleAdsLeadLabel: String(form.get("googleAdsLeadLabel") ?? ""),
+                enabled: form.get("enabled") === "on",
+              });
+              toast("success", "Tracking saved.");
+              setSaved(true);
+              setTimeout(() => setSaved(false), 2000);
+            } catch (err) {
+              toast("error", errorMessage(err, "Could not save tracking."));
+            }
+          }}
+        >
+          <Field label="Meta Pixel ID">
+            <Input name="metaPixelId" defaultValue={cfg.metaPixelId ?? ""} placeholder="e.g. 1234567890123456" />
+          </Field>
+          <Field label="Google Tag ID (GA4 “G-…” or Google Ads “AW-…”)">
+            <Input name="googleTagId" defaultValue={cfg.googleTagId ?? ""} placeholder="e.g. G-XXXXXXX or AW-XXXXXXXXX" />
+          </Field>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Field label="Google Ads — purchase conversion label">
+              <Input name="googleAdsPurchaseLabel" defaultValue={cfg.googleAdsPurchaseLabel ?? ""} placeholder="AW-XXX/abc123 or label" />
+            </Field>
+            <Field label="Google Ads — lead conversion label">
+              <Input name="googleAdsLeadLabel" defaultValue={cfg.googleAdsLeadLabel ?? ""} placeholder="optional" />
+            </Field>
+          </div>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" name="enabled" defaultChecked={cfg.enabled} />
+            Enabled (fire events on the live booking page)
+          </label>
+          <Button type="submit" className="self-start">
+            {saved ? "Saved" : "Save tracking"}
+          </Button>
+        </form>
+        <div className="mt-5 rounded-xl border border-sand-200 bg-sand-50 p-4 text-xs leading-relaxed text-ink-soft">
+          <p className="font-semibold text-ink">Events sent</p>
+          <ul className="mt-1.5 list-disc pl-4">
+            <li>Booking page viewed → Meta <span className="font-mono">ViewContent</span> · GA <span className="font-mono">view_item</span></li>
+            <li>Booking requested → Meta <span className="font-mono">Lead</span> · GA <span className="font-mono">generate_lead</span> (+ Ads lead conversion)</li>
+            <li>Payment / deposit → Meta <span className="font-mono">Purchase</span> · GA <span className="font-mono">purchase</span> (+ Ads purchase conversion) with value &amp; currency</li>
+          </ul>
+        </div>
+      </div>
     </div>
   );
 }

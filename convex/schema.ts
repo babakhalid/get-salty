@@ -292,6 +292,17 @@ export default defineSchema({
     .index("by_status", ["status"])
     .index("by_channel", ["channelId"]),
 
+  // ── Marketing / conversion tracking ──────────────────────────────────
+  // Singleton row. Pixel/tag IDs are public by nature (they ship in the
+  // guest booking page), so tracking.get is a public query.
+  trackingConfig: defineTable({
+    metaPixelId: v.optional(v.string()),
+    googleTagId: v.optional(v.string()), // GA4 "G-XXXX" or Google Ads "AW-XXXX"
+    googleAdsPurchaseLabel: v.optional(v.string()), // "AW-XXX/label" or "label"
+    googleAdsLeadLabel: v.optional(v.string()),
+    enabled: v.boolean(),
+  }),
+
   // ── Channex.io live sync ─────────────────────────────────────────────
   channexConfig: defineTable({
     propertyId: v.string(), // Channex property UUID

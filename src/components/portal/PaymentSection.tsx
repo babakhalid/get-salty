@@ -11,6 +11,7 @@ import {
   LockSimple,
 } from "@phosphor-icons/react";
 import { api } from "../../../convex/_generated/api";
+import { track } from "../../lib/tracking";
 import { Button, Field, Input, cx } from "../ui";
 import { eur } from "../../lib/format";
 
@@ -105,6 +106,7 @@ export default function PaymentSection({
         amount: Number(amount),
         cardLast4: cardNumber.replace(/\D/g, "").slice(-4),
       });
+      track("Purchase", { value: result.paid, currency: "EUR" });
       setPaidNow(result.paid);
       setCardNumber("");
       setExpiry("");

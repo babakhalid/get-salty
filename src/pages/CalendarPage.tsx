@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useMutation, useQuery } from "convex/react";
 import { addDays, format, isToday, parseISO, startOfWeek } from "date-fns";
 import { gsap } from "gsap";
@@ -85,6 +86,10 @@ export default function CalendarPage() {
   const me = useQuery(api.users.me);
   const canManage = me?.role === "admin" || me?.role === "manager";
   const [blockOpen, setBlockOpen] = useState(false);
+  const [hover, setHover] = useState<
+    | { name: string; sub: string; room: string; x: number; y: number }
+    | null
+  >(null);
 
   const days = useMemo(() => {
     let start = parseISO(rangeStart);
@@ -436,14 +441,14 @@ export default function CalendarPage() {
                       return (
                         <div
                           key={bl._id}
-                          className="group absolute top-1 z-[4] flex h-9 items-center gap-1 overflow-hidden rounded-lg border border-coral/30 px-2 text-[11px] font-bold text-coral"
+                          className="group absolute top-1 z-[4] flex h-9 items-center gap-1 overflow-hidden rounded-lg border border-coral/50 bg-coral/15 px-2 text-[11px] font-black uppercase tracking-wide text-coral"
                           style={{
                             left,
                             width,
                             backgroundImage:
-                              "repeating-linear-gradient(45deg, rgba(192,91,77,0.10) 0, rgba(192,91,77,0.10) 6px, rgba(192,91,77,0.02) 6px, rgba(192,91,77,0.02) 12px)",
+                              "repeating-linear-gradient(45deg, rgba(192,91,77,0.28) 0, rgba(192,91,77,0.28) 7px, rgba(192,91,77,0.10) 7px, rgba(192,91,77,0.10) 14px)",
                           }}
-                          title={`Blocked: ${bl.reason} (${bl.start} → ${bl.end})`}
+                          title={`${bl.reason} (${bl.start} → ${bl.end})`}
                         >
                           <span className="truncate">{bl.reason}</span>
                           {canManage && (
@@ -523,7 +528,19 @@ export default function CalendarPage() {
                               ? `translateY(${dd.rowDelta * ROW_H}px)`
                               : undefined,
                         }}
-                        title={`${booking.guestName} · ${booking.checkIn} → ${booking.checkOut}`}
+                        onMouseEnter={(e) =>
+                          setHover({
+                            name: booking.guestName,
+                            sub: `${prettyRange(booking.checkIn, booking.checkOut)} · ${booking.adults + booking.children} guest${booking.adults + booking.children === 1 ? "" : "s"}`,
+                            room: row.roomName,
+                            x: e.clientX,
+                            y: e.clientY,
+                          })
+                        }
+                        onMouseMove={(e) =>
+                          setHover((h) => (h ? { ...h, x: e.clientX, y: e.clientY } : h))
+                        }
+                        onMouseLeave={() => setHover(null)}
                       >
                         {canManage && (
                           <span
@@ -590,6 +607,23 @@ export default function CalendarPage() {
           )}
         </div>
       </div>
+
+      {/* Hover tooltip — floats just above the cursor (portaled to body so
+          the sidebar/main transform doesn't offset it) */}
+      {hover &&
+        !barDrag &&
+        createPortal(
+          <div
+            className="pointer-events-none fixed z-[80] max-w-xs -translate-x-1/2 -translate-y-full rounded-lg bg-ink px-3 py-2 text-xs text-sand-50 shadow-lg"
+            style={{ left: hover.x, top: hover.y - 14 }}
+          >
+            <p className="font-bold">{hover.name}</p>
+            <p className="text-ocean-200">{hover.room}</p>
+            <p className="num text-ocean-200">{hover.sub}</p>
+            <span className="absolute left-1/2 top-full h-2 w-2 -translate-x-1/2 -translate-y-1 rotate-45 bg-ink" />
+          </div>,
+          document.body,
+        )}
 
       {/* Legend */}
       <div className="mt-4 flex flex-wrap items-center gap-4 text-xs text-ink-faint">

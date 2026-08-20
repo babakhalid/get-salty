@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as _calendarData from "../_calendarData.js";
 import type * as analytics from "../analytics.js";
 import type * as auditLogs from "../auditLogs.js";
 import type * as auth from "../auth.js";
@@ -21,6 +22,7 @@ import type * as dashboard from "../dashboard.js";
 import type * as guestDirectory from "../guestDirectory.js";
 import type * as hermes from "../hermes.js";
 import type * as http from "../http.js";
+import type * as importCalendar from "../importCalendar.js";
 import type * as inventory from "../inventory.js";
 import type * as lib_access from "../lib/access.js";
 import type * as payments from "../payments.js";
@@ -38,6 +40,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  _calendarData: typeof _calendarData;
   analytics: typeof analytics;
   auditLogs: typeof auditLogs;
   auth: typeof auth;
@@ -51,6 +54,7 @@ declare const fullApi: ApiFromModules<{
   guestDirectory: typeof guestDirectory;
   hermes: typeof hermes;
   http: typeof http;
+  importCalendar: typeof importCalendar;
   inventory: typeof inventory;
   "lib/access": typeof lib_access;
   payments: typeof payments;

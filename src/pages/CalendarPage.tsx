@@ -4,7 +4,7 @@ import { useMutation, useQuery } from "convex/react";
 import { addDays, format, isToday, parseISO, startOfWeek } from "date-fns";
 import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
-import { CaretLeft, CaretRight, X } from "@phosphor-icons/react";
+import { CaretDown, CaretLeft, CaretRight, X } from "@phosphor-icons/react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { Button, Drawer, Field, Input, Select, cx } from "../components/ui";
@@ -90,6 +90,13 @@ export default function CalendarPage() {
     | { name: string; sub: string; room: string; x: number; y: number }
     | null
   >(null);
+  const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set());
+  const toggleRoomCollapse = (roomId: string) =>
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      next.has(roomId) ? next.delete(roomId) : next.add(roomId);
+      return next;
+    });
 
   const days = useMemo(() => {
     let start = parseISO(rangeStart);
@@ -169,6 +176,10 @@ export default function CalendarPage() {
   const rows = grid?.rows ?? [];
   const bookings = grid?.bookings ?? [];
   const blocks = grid?.blocks ?? [];
+  const bedCountByRoom = rows.reduce<Record<string, number>>((acc, r) => {
+    if (r.bedId) acc[r.roomId] = (acc[r.roomId] ?? 0) + 1;
+    return acc;
+  }, {});
 
   // Booking-bar drag: window-level listeners so the drag survives leaving the bar
   useEffect(() => {
@@ -366,6 +377,9 @@ export default function CalendarPage() {
             rows.map((row, rowIdx) => {
               const prev = rows[rowIdx - 1];
               const newRoomGroup = !prev || prev.roomId !== row.roomId;
+              const roomCollapsed = row.mode === "dorm" && collapsed.has(row.roomId);
+              // A collapsed room shows only its header row; hide the rest.
+              if (roomCollapsed && !newRoomGroup) return null;
               const rowBookings = bookings.filter((b) =>
                 row.bedId ? b.bedId === row.bedId : b.roomId === row.roomId && !b.bedId,
               );
@@ -382,18 +396,48 @@ export default function CalendarPage() {
                   )}
                   style={{ gridTemplateColumns: `${LABEL_W}px repeat(${days.length}, ${COL_W}px)` }}
                 >
-                  {/* Label rail */}
-                  <div className="sticky left-0 z-10 flex items-center gap-2 border-r border-sand-200 bg-white px-4 py-2">
+                  {/* Label rail — room header on the first bed, indented bed
+                      sub-rows beneath it */}
+                  <div className="sticky left-0 z-10 flex items-center gap-2 border-r border-sand-200 bg-white py-2 pl-3 pr-3">
                     {row.mode === "dorm" ? (
-                      <>
-                        <span className="w-1 self-stretch rounded-full bg-sand-200" />
-                        <div className="min-w-0 leading-tight">
-                          <p className="truncate text-[13px] font-semibold">{row.label}</p>
-                          <p className="truncate text-[11px] text-ink-faint">{row.roomName}</p>
+                      <div className="flex min-w-0 flex-1 items-start gap-1.5 leading-tight">
+                        {newRoomGroup ? (
+                          <button
+                            onClick={() => toggleRoomCollapse(row.roomId)}
+                            className="mt-0.5 shrink-0 text-ink-faint transition-colors hover:text-ink cursor-pointer"
+                            title={roomCollapsed ? "Show beds" : "Hide beds"}
+                            aria-label={roomCollapsed ? "Show beds" : "Hide beds"}
+                          >
+                            {roomCollapsed ? (
+                              <CaretRight size={13} weight="bold" />
+                            ) : (
+                              <CaretDown size={13} weight="bold" />
+                            )}
+                          </button>
+                        ) : (
+                          <span className="w-[13px] shrink-0" />
+                        )}
+                        <div className="min-w-0 flex-1">
+                          {newRoomGroup && (
+                            <p className="truncate text-[13px] font-bold">
+                              {row.roomName}
+                              {roomCollapsed && (
+                                <span className="ml-1.5 text-[11px] font-normal text-ink-faint">
+                                  {bedCountByRoom[row.roomId] ?? 0} beds
+                                </span>
+                              )}
+                            </p>
+                          )}
+                          {!roomCollapsed && (
+                            <p className="flex items-center gap-1.5 truncate pl-2 text-[11px] text-ink-faint">
+                              <span className="text-sand-300">└</span>
+                              {row.label}
+                            </p>
+                          )}
                         </div>
-                      </>
+                      </div>
                     ) : (
-                      <div className="min-w-0 leading-tight">
+                      <div className="min-w-0 flex-1 leading-tight">
                         <p className="truncate text-[13px] font-semibold">{row.roomName}</p>
                         <p className="truncate text-[11px] text-ink-faint">
                           {row.typeName} · sleeps {row.capacity}
@@ -429,9 +473,11 @@ export default function CalendarPage() {
                     );
                   })}
 
-                  {/* Room blocks — striped, non-bookable ranges */}
-                  {blocks
-                    .filter((bl) => (row.bedId ? false : bl.roomId === row.roomId))
+                  {/* Room blocks — striped, non-bookable ranges. A block
+                      covers the whole room, so it shows on every bed row. */}
+                  {!roomCollapsed &&
+                    blocks
+                    .filter((bl) => bl.roomId === row.roomId)
                     .map((bl) => {
                       const from = Math.max(idxOf(bl.start), -0.5);
                       const to = Math.min(idxOf(bl.end), days.length + 0.5);
@@ -465,7 +511,8 @@ export default function CalendarPage() {
                     })}
 
                   {/* Booking bars — half-day offset like classic PMS charts */}
-                  {rowBookings.map((booking) => {
+                  {!roomCollapsed &&
+                    rowBookings.map((booking) => {
                     const isDraggedBar = barDrag?.bookingId === booking._id;
                     const dd = isDraggedBar ? barDrag : null;
                     // Live preview: move slides the bar; resize stretches it.

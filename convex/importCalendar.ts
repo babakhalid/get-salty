@@ -95,14 +95,18 @@ export const run = internalMutation({
       }
     }
 
-    // 2. Rooms (one room type each — capacities from the rooming list; price 0 until set).
+    // 2. Rooms sold BY BED — each room is a per-bed unit with N bed sub-rows
+    //    (2 for double/twin, 3 for Parents, 4 for Appart). "dorm" mode is the
+    //    app's per-bed machinery: bed sub-rows on the calendar, per-bed
+    //    availability, one guest per bed.
     const roomIdByName = new Map<string, Id<"rooms">>();
+    const bedIdsByRoom = new Map<string, Id<"beds">[]>();
     let sort = 0;
     for (const [name, capacity, description] of CALENDAR_DATA.rooms) {
       const typeId = await ctx.db.insert("roomTypes", {
         name,
         description,
-        mode: "private",
+        mode: "dorm",
         capacity,
         basePrice: 0,
       });
@@ -113,6 +117,17 @@ export const run = internalMutation({
         description,
         sortOrder: sort++,
       });
+      const beds: Id<"beds">[] = [];
+      for (let i = 0; i < capacity; i++) {
+        beds.push(
+          await ctx.db.insert("beds", {
+            roomId,
+            label: `Bed ${i + 1}`,
+            sortOrder: i,
+          }),
+        );
+      }
+      bedIdsByRoom.set(name, beds);
       roomIdByName.set(name, roomId);
     }
 
@@ -133,30 +148,39 @@ export const run = internalMutation({
     let created = 0;
     for (const b of CALENDAR_DATA.bookings) {
       const roomId = roomIdByName.get(b.room);
-      if (!roomId) continue;
+      const beds = bedIdsByRoom.get(b.room);
+      if (!roomId || !beds) continue;
       const guestId = await guestFor(b.name);
       const pkgId = b.package ? pkgIdByName.get(b.package) : undefined;
       const board = "board" in b && b.board ? ` · ${b.board}` : "";
-      await ctx.db.insert("bookings", {
-        guestId,
-        roomId,
-        packageId: pkgId,
-        checkIn: b.checkIn,
-        checkOut: b.checkOut,
-        status: b.status as
-          | "confirmed"
-          | "checked_in"
-          | "checked_out",
-        source: "direct",
-        adults: b.adults,
-        children: b.children,
-        totalAmount: 0,
-        currency: "EUR",
-        notes: `[Imported from calendar]${board}`,
-        portalToken: generatePortalToken(),
-        reservationCode: generateReservationCode(),
-      });
-      created++;
+      // Occupy beds = guest count (capped at the room's beds); one booking
+      // row per bed, all sharing the guest. Solo stays leave beds free.
+      const occupants = Math.max(1, Math.min(b.adults + b.children, beds.length));
+      let adultsLeft = b.adults;
+      let childrenLeft = b.children;
+      for (let i = 0; i < occupants; i++) {
+        const isChild = adultsLeft <= 0 && childrenLeft > 0;
+        if (isChild) childrenLeft--;
+        else adultsLeft--;
+        await ctx.db.insert("bookings", {
+          guestId,
+          roomId,
+          bedId: beds[i],
+          packageId: pkgId,
+          checkIn: b.checkIn,
+          checkOut: b.checkOut,
+          status: b.status as "confirmed" | "checked_in" | "checked_out",
+          source: "direct",
+          adults: isChild ? 0 : 1,
+          children: isChild ? 1 : 0,
+          totalAmount: 0,
+          currency: "EUR",
+          notes: `[Imported from calendar]${board}`,
+          portalToken: generatePortalToken(),
+          reservationCode: generateReservationCode(),
+        });
+        created++;
+      }
     }
 
     // 4. Date blocks (renovation / blocked).
